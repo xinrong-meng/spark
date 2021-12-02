@@ -17,6 +17,7 @@
 from datetime import timedelta
 
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 
 import pyspark.pandas as ps
 from pyspark.pandas.tests.data_type_ops.testing_utils import TestCasesUtils
@@ -131,7 +132,17 @@ class TimedeltaOpsTest(PandasOnSparkTestCase, TestCasesUtils):
         self.assert_eq(self.pser.isnull(), self.psser.isnull())
 
     def test_astype(self):
-        self.assertRaises(TypeError, lambda: self.psser.astype(str))
+        pser = self.pser
+        psser = self.psser
+        target_psser = ps.Series(
+            ["INTERVAL '1 00:00:00' DAY TO SECOND", "INTERVAL '0 00:00:00.000002' DAY TO SECOND"]
+        )
+        self.assert_eq(target_psser, psser.astype(str))
+        self.assert_eq(pser.astype("category"), psser.astype("category"))
+        cat_type = CategoricalDtype(categories=["a", "b", "c"])
+        self.assert_eq(pser.astype(cat_type), psser.astype(cat_type))
+
+        self.assertRaises(TypeError, lambda: psser.astype(bool))
 
     def test_neg(self):
         self.assertRaises(TypeError, lambda: -self.psser)
