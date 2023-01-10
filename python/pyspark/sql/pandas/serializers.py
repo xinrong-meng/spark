@@ -18,8 +18,10 @@
 """
 Serializers for PyArrow and pandas conversions. See `pyspark.serializers` for more details.
 """
+from typing import Any
 
 from pyspark.serializers import Serializer, read_int, write_int, UTF8Deserializer, CPickleSerializer
+from pyspark.sql import Row
 from pyspark.sql.pandas.types import to_arrow_type
 from pyspark.sql.types import StringType, StructType, BinaryType, StructField, LongType
 
@@ -310,21 +312,75 @@ class ArrowStreamPandasUDFSerializer(ArrowStreamPandasSerializer):
         self._df_for_struct = df_for_struct
 
     def arrow_to_pandas(self, arrow_column):
-        import pyarrow.types as types
-
-        if self._df_for_struct and types.is_struct(arrow_column.type):
-            import pandas as pd
-
-            series = [
-                super(ArrowStreamPandasUDFSerializer, self)
-                .arrow_to_pandas(column)
-                .rename(field.name)
-                for column, field in zip(arrow_column.flatten(), arrow_column.type)
-            ]
-            s = pd.concat(series, axis=1)
+        if ArrowStreamPandasUDFSerializer._need_type_cast(arrow_column.type):
+            s = ArrowStreamPandasUDFSerializer._arrow_to_pandas_w_cast(arrow_column)
         else:
             s = super(ArrowStreamPandasUDFSerializer, self).arrow_to_pandas(arrow_column)
         return s
+
+    @staticmethod
+    def _need_type_cast(arrow_column_type):
+        import pyarrow as pa
+
+        return isinstance(arrow_column_type, (pa.StructType, pa.ListType, pa.MapType))
+
+    @staticmethod
+    def _arrow_to_pandas_w_cast(arrow_column):
+        pser = arrow_column.to_pandas()
+        return pser.map(
+            lambda v: ArrowStreamPandasUDFSerializer._recursive_cast(v, arrow_column.type)
+        )
+
+    @staticmethod
+    def _recursive_cast(v: Any, t: "pa.DataType"):
+        import pyarrow as pa
+        import numpy as np
+
+        if v is None:
+            return v
+        if isinstance(t, pa.StructType):
+            assert isinstance(v, dict)
+            for i in range(0, t.num_fields):
+                field_type = t[i].type
+                if ArrowStreamPandasUDFSerializer._need_type_cast(field_type):
+                    name = t[i].name
+                    v[name] = ArrowStreamPandasUDFSerializer._recursive_cast(v[name], field_type)
+            return Row(**v)
+        elif isinstance(t, pa.ListType):
+            assert isinstance(v, np.ndarray)
+            if ArrowStreamPandasUDFSerializer._need_type_cast(t.value_type):
+                return [
+                    ArrowStreamPandasUDFSerializer._recursive_cast(arr_value, t.value_type)
+                    for arr_value in v
+                ]
+            else:
+                return v.tolist()
+        elif isinstance(t, pa.MapType):
+            assert isinstance(v, list)
+            key_converter = (
+                lambda x: ArrowStreamPandasUDFSerializer._recursive_cast(  # noqa: E731
+                    x, t.key_type
+                )
+                if ArrowStreamPandasUDFSerializer._need_type_cast(t.key_type)
+                else None
+            )
+            value_converter = (
+                lambda x: ArrowStreamPandasUDFSerializer._recursive_cast(  # noqa: E731
+                    x, t.item_type
+                )
+                if ArrowStreamPandasUDFSerializer._need_type_cast(t.item_type)
+                else None
+            )
+            return {
+                key_converter(dict_key)
+                if key_converter
+                else dict_key: value_converter(dict_value)
+                if value_converter
+                else dict_value
+                for dict_key, dict_value in v
+            }
+        else:
+            return v
 
     def dump_stream(self, iterator, stream):
         """
