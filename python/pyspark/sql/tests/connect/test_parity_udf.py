@@ -29,7 +29,7 @@ from pyspark.sql.tests.test_udf import BaseUDFTestsMixin
 from pyspark.testing.connectutils import ReusedConnectTestCase
 from pyspark.errors.exceptions import SparkConnectAnalysisException
 from pyspark.sql.connect.functions import udf
-from pyspark.sql.types import BooleanType
+from pyspark.sql.types import BooleanType, IntegerType
 
 
 class UDFParityTests(BaseUDFTestsMixin, ReusedConnectTestCase):
@@ -144,11 +144,6 @@ class UDFParityTests(BaseUDFTestsMixin, ReusedConnectTestCase):
 
     # TODO(SPARK-42210): implement `spark.udf`
     @unittest.skip("Fails in Spark Connect, should enable.")
-    def test_non_existed_udaf(self):
-        super().test_non_existed_udaf()
-
-    # TODO(SPARK-42210): implement `spark.udf`
-    @unittest.skip("Fails in Spark Connect, should enable.")
     def test_non_existed_udf(self):
         super().test_non_existed_udf()
 
@@ -206,6 +201,15 @@ class UDFParityTests(BaseUDFTestsMixin, ReusedConnectTestCase):
         runWithJoinType("right", "RIGHT OUTER")
         runWithJoinType("leftanti", "LEFT ANTI")
         runWithJoinType("leftsemi", "LEFT SEMI")
+
+    def test_udf_registration_returns_udf(self):
+        df = self.spark.range(10)
+        add_three = self.spark.udf.register("add_three", lambda x: x + 3, IntegerType())
+
+        self.assertListEqual(
+            df.selectExpr("add_three(id) AS plus_three").collect(),
+            df.select(add_three("id").alias("plus_three")).collect(),
+        )
 
 
 if __name__ == "__main__":
