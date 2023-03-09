@@ -38,6 +38,7 @@ if have_pandas:
     pandas_requirement_message or pyarrow_requirement_message,
 )
 class MapInArrowTests(ReusedSQLTestCase):
+    # hihi
     @classmethod
     def setUpClass(cls):
         ReusedSQLTestCase.setUpClass()

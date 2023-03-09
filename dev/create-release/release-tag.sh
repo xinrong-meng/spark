@@ -122,6 +122,7 @@ if ! is_dry_run; then
   git push origin $RELEASE_TAG
   if [[ $RELEASE_VERSION != *"preview"* ]]; then
     git push origin HEAD:$GIT_BRANCH
+  # Check if $RELEASE_TAG in $GIT_BRANCH
   else
     echo "It's preview release. We only push $RELEASE_TAG to remote."
   fi
