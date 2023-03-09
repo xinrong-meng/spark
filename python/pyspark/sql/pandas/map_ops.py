@@ -122,7 +122,7 @@ class PandasMapOpsMixin:
         schema : :class:`pyspark.sql.types.DataType` or str
             the return type of the `func` in PySpark. The value can be either a
             :class:`pyspark.sql.types.DataType` object or a DDL-formatted type string.
-
+        # xx
         Examples
         --------
         >>> import pyarrow  # doctest: +SKIP
