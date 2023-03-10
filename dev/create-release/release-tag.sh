@@ -118,7 +118,7 @@ sed -i".tmp9" "s/'facetFilters':.*$/'facetFilters': [\"version:$R_NEXT_VERSION\"
 git commit -a -m "Preparing development version $NEXT_VERSION"
 
 if ! is_dry_run; then
-  # Push changes
+  # Push changes x
   git push origin $RELEASE_TAG
   if [[ $RELEASE_VERSION != *"preview"* ]]; then
     git push origin HEAD:$GIT_BRANCH
