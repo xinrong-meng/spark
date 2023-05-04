@@ -88,7 +88,9 @@ def _create_py_udf(
     f: Callable[..., Any],
     returnType: "DataTypeOrString",
     evalType: int,
+    deterministic: bool = True,
     useArrow: Optional[bool] = None,
+    name: Optional[str] = None,
 ) -> "UserDefinedFunctionLike":
     """Create a regular/Arrow-optimized Python UDF."""
     # The following table shows the results when the type coercion in Arrow is needed, that is,
@@ -130,7 +132,7 @@ def _create_py_udf(
             else useArrow
         )
 
-    regular_udf = _create_udf(f, returnType, evalType)
+    regular_udf = _create_udf(f, returnType, evalType, deterministic=deterministic, name=name)
     return_type = regular_udf.returnType
     try:
         is_func_with_args = len(getfullargspec(f).args) > 0
@@ -192,7 +194,6 @@ def _create_arrow_py_udf(regular_udf):  # type: ignore
     # Keep the attributes as if this is a regular Python UDF.
     pudf.func = f
     pudf.returnType = return_type
-    pudf.evalType = regular_udf.evalType
     return pudf
 
 
@@ -636,7 +637,7 @@ class UDFRegistration:
                         "SQL_SCALAR_PANDAS_ITER_UDF or SQL_GROUPED_AGG_PANDAS_UDF"
                     },
                 )
-            register_udf = _create_udf(
+            register_udf = _create_py_udf(
                 f.func,
                 returnType=f.returnType,
                 name=name,
@@ -647,7 +648,7 @@ class UDFRegistration:
         else:
             if returnType is None:
                 returnType = StringType()
-            return_udf = _create_udf(
+            return_udf = _create_py_udf(
                 f, returnType=returnType, evalType=PythonEvalType.SQL_BATCHED_UDF, name=name
             )
             register_udf = return_udf._unwrapped  # type: ignore[attr-defined]
