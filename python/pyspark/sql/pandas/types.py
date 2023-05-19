@@ -103,11 +103,6 @@ def to_arrow_type(dt: DataType) -> "pa.DataType":
                     error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_VERSION",
                     message_parameters={"data_type": "Array of StructType"},
                 )
-            if any(type(field.dataType) == StructType for field in dt.elementType):
-                raise PySparkTypeError(
-                    error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_CONVERSION",
-                    message_parameters={"data_type": "Nested StructType"},
-                )
         arrow_type = pa.list_(to_arrow_type(dt.elementType))
     elif type(dt) == MapType:
         if LooseVersion(pa.__version__) < LooseVersion("2.0.0"):
@@ -115,21 +110,13 @@ def to_arrow_type(dt: DataType) -> "pa.DataType":
                 error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_VERSION",
                 message_parameters={"data_type": "MapType"},
             )
-        if type(dt.keyType) in [StructType, TimestampType] or type(dt.valueType) in [
-            StructType,
-            TimestampType,
-        ]:
+        if type(dt.keyType) == TimestampType or type(dt.valueType) == TimestampType:
             raise PySparkTypeError(
                 error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_CONVERSION",
                 message_parameters={"data_type": str(dt)},
             )
         arrow_type = pa.map_(to_arrow_type(dt.keyType), to_arrow_type(dt.valueType))
     elif type(dt) == StructType:
-        if any(type(field.dataType) == StructType for field in dt):
-            raise PySparkTypeError(
-                error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_CONVERSION",
-                message_parameters={"data_type": "Nested StructType"},
-            )
         fields = [
             pa.field(field.name, to_arrow_type(field.dataType), nullable=field.nullable)
             for field in dt
@@ -211,11 +198,6 @@ def from_arrow_type(at: "pa.DataType", prefer_timestamp_ntz: bool = False) -> Da
             )
         spark_type = MapType(from_arrow_type(at.key_type), from_arrow_type(at.item_type))
     elif types.is_struct(at):
-        if any(types.is_struct(field.type) for field in at):
-            raise PySparkTypeError(
-                error_class="UNSUPPORTED_DATA_TYPE_FOR_ARROW_CONVERSION",
-                message_parameters={"data_type": "Nested StructType"},
-            )
         return StructType(
             [
                 StructField(field.name, from_arrow_type(field.type), nullable=field.nullable)
