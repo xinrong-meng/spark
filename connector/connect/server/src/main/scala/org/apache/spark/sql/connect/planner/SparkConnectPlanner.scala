@@ -68,7 +68,7 @@ import org.apache.spark.sql.execution.arrow.ArrowConverters
 import org.apache.spark.sql.execution.command.CreateViewCommand
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.execution.datasources.jdbc.{JDBCOptions, JDBCPartition, JDBCRelation}
-import org.apache.spark.sql.execution.python.{PythonForeachWriter, UserDefinedPythonFunction, UserDefinedPythonTableFunction}
+import org.apache.spark.sql.execution.python.{PythonForeachWriter, PythonProfilingObservation, UserDefinedPythonFunction, UserDefinedPythonTableFunction}
 import org.apache.spark.sql.execution.stat.StatFunctions
 import org.apache.spark.sql.execution.streaming.GroupStateImpl.groupStateTimeoutFromString
 import org.apache.spark.sql.execution.streaming.StreamingQueryWrapper
@@ -1657,8 +1657,20 @@ class SparkConnectPlanner(
       pythonEvalType = udf.getEvalType,
       udfDeterministic = fun.getDeterministic)
       .builder(fun.getArgumentsList.asScala.map(transformExpression).toSeq) match {
-      case udaf: PythonUDAF => udaf.toAggregateExpression()
+      case udaf: PythonUDAF =>
+        observePythonProfiler(udaf.resultId)
+        udaf.toAggregateExpression()
+      case udf: PythonUDF =>
+        observePythonProfiler(udf.resultId)
+        udf
       case other => other
+    }
+  }
+
+  private def observePythonProfiler(resultId: ExprId): Unit = {
+    if (session.sessionState.conf.pythonUDFProfiler.isDefined && executeHolderOpt.isDefined) {
+      val observation = new PythonProfilingObservation(resultId.id, session)
+      executeHolderOpt.get.addObservation(observation.name, observation)
     }
   }
 

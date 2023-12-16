@@ -83,6 +83,7 @@ from pyspark.sql.connect.plan import (
 from pyspark.sql.connect.observation import Observation
 from pyspark.sql.connect.utils import get_python_ver
 from pyspark.sql.pandas.types import _create_converter_to_pandas, from_arrow_schema
+from pyspark.sql.profiler import ProfilerCollector
 from pyspark.sql.types import DataType, StructType, TimestampType, _has_type
 from pyspark.rdd import PythonEvalType
 from pyspark.storagelevel import StorageLevel
@@ -636,6 +637,8 @@ class SparkConnectClient(object):
         # be updated on the first response received.
         self._server_session_id: Optional[str] = None
 
+        self._profiler_collector = ProfilerCollector()
+
     def _retrying(self) -> "Retrying":
         return Retrying(self._retry_policies)
 
@@ -1169,7 +1172,19 @@ class SparkConnectClient(object):
             if b.observed_metrics:
                 logger.debug("Received observed metric batch.")
                 for observed_metrics in self._build_observed_metrics(b.observed_metrics):
-                    if observed_metrics.name in observations:
+                    if observed_metrics.name.startswith("__python_udf_profiler__"):
+                        result_id = int(observed_metrics.name[len("__python_udf_profiler__") :])
+
+                        for key, metric in zip(observed_metrics.keys, observed_metrics.metrics):
+                            if key == "perf":
+                                self._profiler_collector._add_perf_profile_result(
+                                    result_id, LiteralExpression._to_value(metric)
+                                )
+                            elif key == "mem":
+                                # FIXME
+                                pass
+
+                    elif observed_metrics.name in observations:
                         observation_result = observations[observed_metrics.name]._result
                         assert observation_result is not None
                         observation_result.update(

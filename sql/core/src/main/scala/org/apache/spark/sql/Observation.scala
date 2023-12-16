@@ -26,62 +26,13 @@ import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.util.QueryExecutionListener
 import org.apache.spark.util.ArrayImplicits._
 
+trait ObservedMetrics {
 
-/**
- * Helper class to simplify usage of `Dataset.observe(String, Column, Column*)`:
- *
- * {{{
- *   // Observe row count (rows) and highest id (maxid) in the Dataset while writing it
- *   val observation = Observation("my metrics")
- *   val observed_ds = ds.observe(observation, count(lit(1)).as("rows"), max($"id").as("maxid"))
- *   observed_ds.write.parquet("ds.parquet")
- *   val metrics = observation.get
- * }}}
- *
- * This collects the metrics while the first action is executed on the observed dataset. Subsequent
- * actions do not modify the metrics returned by [[get]]. Retrieval of the metric via [[get]]
- * blocks until the first action has finished and metrics become available.
- *
- * This class does not support streaming datasets.
- *
- * @param name name of the metric
- * @since 3.3.0
- */
-class Observation(val name: String) {
+  val name: String
 
-  if (name.isEmpty) throw new IllegalArgumentException("Name must not be empty")
+  protected[sql] def metrics: Option[Map[String, Any]]
 
-  /**
-   * Create an Observation instance without providing a name. This generates a random name.
-   */
-  def this() = this(UUID.randomUUID().toString)
-
-  private val listener: ObservationListener = ObservationListener(this)
-
-  @volatile private var dataframeId: Option[(SparkSession, Long)] = None
-
-  @volatile private var metrics: Option[Map[String, Any]] = None
-
-  /**
-   * Attach this observation to the given [[Dataset]] to observe aggregation expressions.
-   *
-   * @param ds dataset
-   * @param expr first aggregation expression
-   * @param exprs more aggregation expressions
-   * @tparam T dataset type
-   * @return observed dataset
-   * @throws IllegalArgumentException If this is a streaming Dataset (ds.isStreaming == true)
-   */
-  private[spark] def on[T](ds: Dataset[T], expr: Column, exprs: Column*): Dataset[T] = {
-    if (ds.isStreaming) {
-      throw new IllegalArgumentException("Observation does not support streaming Datasets." +
-        "This is because there will be multiple observed metrics as microbatches are constructed" +
-        ". Please register a StreamingQueryListener and get the metric for each microbatch in " +
-        "QueryProgressEvent.progress, or use query.lastProgress or query.recentProgress.")
-    }
-    register(ds.sparkSession, ds.id)
-    ds.observe(name, expr, exprs: _*)
-  }
+  protected[sql] val listener: ObservationListener = ObservationListener(this)
 
   /**
    * (Scala-specific) Get the observed metrics. This waits for the observed dataset to finish
@@ -114,7 +65,7 @@ class Observation(val name: String) {
    */
   @throws[InterruptedException]
   def getAsJava: java.util.Map[String, AnyRef] = {
-      get.map { case (key, value) => (key, value.asInstanceOf[Object])}.asJava
+    get.map { case (key, value) => (key, value.asInstanceOf[Object]) }.asJava
   }
 
   /**
@@ -130,6 +81,65 @@ class Observation(val name: String) {
       }
       metrics.getOrElse(Map.empty)
     }
+  }
+
+  protected[spark] def onFinish(qe: QueryExecution): Unit
+}
+
+/**
+ * Helper class to simplify usage of `Dataset.observe(String, Column, Column*)`:
+ *
+ * {{{
+ *   // Observe row count (rows) and highest id (maxid) in the Dataset while writing it
+ *   val observation = Observation("my metrics")
+ *   val observed_ds = ds.observe(observation, count(lit(1)).as("rows"), max($"id").as("maxid"))
+ *   observed_ds.write.parquet("ds.parquet")
+ *   val metrics = observation.get
+ * }}}
+ *
+ * This collects the metrics while the first action is executed on the observed dataset. Subsequent
+ * actions do not modify the metrics returned by [[get]]. Retrieval of the metric via [[get]]
+ * blocks until the first action has finished and metrics become available.
+ *
+ * This class does not support streaming datasets.
+ *
+ * @param name name of the metric
+ * @since 3.3.0
+ */
+class Observation(val name: String) extends ObservedMetrics {
+
+  if (name.isEmpty) throw new IllegalArgumentException("Name must not be empty")
+
+  /**
+   * Create an Observation instance without providing a name. This generates a random name.
+   */
+  def this() = this(UUID.randomUUID().toString)
+
+  @volatile private var dataframeId: Option[(SparkSession, Long)] = None
+
+  @volatile private var _metrics: Option[Map[String, Any]] = None
+
+  override protected[sql] def metrics: Option[Map[String, Any]] = _metrics
+
+  /**
+   * Attach this observation to the * given [[Dataset]] to observe aggregation expressions.
+   *
+   * @param ds dataset
+   * @param expr first aggregation expression
+   * @param exprs more aggregation expressions
+   * @tparam T dataset type
+   * @return observed dataset
+   * @throws IllegalArgumentException If this is a streaming Dataset (ds.isStreaming == true)
+   */
+  private[spark] def on[T](ds: Dataset[T], expr: Column, exprs: Column*): Dataset[T] = {
+    if (ds.isStreaming) {
+      throw new IllegalArgumentException("Observation does not support streaming Datasets." +
+        "This is because there will be multiple observed metrics as microbatches are constructed" +
+        ". Please register a StreamingQueryListener and get the metric for each microbatch in " +
+        "QueryProgressEvent.progress, or use query.lastProgress or query.recentProgress.")
+    }
+    register(ds.sparkSession, ds.id)
+    ds.observe(name, expr, exprs: _*)
   }
 
   private[sql] def register(sparkSession: SparkSession, dataframeId: Long): Unit = {
@@ -150,7 +160,7 @@ class Observation(val name: String) {
     this.dataframeId.foreach(_._1.listenerManager.unregister(this.listener))
   }
 
-  private[spark] def onFinish(qe: QueryExecution): Unit = {
+  override protected[spark] def onFinish(qe: QueryExecution): Unit = {
     synchronized {
       if (this.metrics.isEmpty && qe.logical.exists {
         case CollectMetrics(name, _, _, dataframeId) =>
@@ -158,7 +168,7 @@ class Observation(val name: String) {
         case _ => false
       }) {
         val row = qe.observedMetrics.get(name)
-        this.metrics = row.map(r => r.getValuesMap[Any](r.schema.fieldNames.toImmutableArraySeq))
+        this._metrics = row.map(r => r.getValuesMap[Any](r.schema.fieldNames.toImmutableArraySeq))
         if (metrics.isDefined) {
           notifyAll()
           unregister()
@@ -169,7 +179,7 @@ class Observation(val name: String) {
 
 }
 
-private[sql] case class ObservationListener(observation: Observation)
+private[sql] case class ObservationListener(observation: ObservedMetrics)
   extends QueryExecutionListener {
 
   override def onSuccess(funcName: String, qe: QueryExecution, durationNs: Long): Unit =

@@ -21,8 +21,9 @@ Util functions for workers.
 import importlib
 from inspect import currentframe, getframeinfo
 import os
+import pstats
 import sys
-from typing import Any, IO
+from typing import Any, Dict, IO, Optional
 import warnings
 
 # 'resource' is a Unix specific module.
@@ -42,6 +43,7 @@ from pyspark.serializers import (
     read_int,
     read_long,
     write_int,
+    write_long,
     FramedSerializer,
     UTF8Deserializer,
     CPickleSerializer,
@@ -178,3 +180,16 @@ def send_accumulator_updates(outfile: IO) -> None:
     write_int(len(_accumulatorRegistry), outfile)
     for aid, accum in _accumulatorRegistry.items():
         pickleSer._write_with_length((aid, accum._value), outfile)
+
+
+_profile_results: Dict[int, Optional[pstats.Stats]] = {}
+
+
+def send_profile_results(outfile: IO) -> None:
+    """
+    Send the profile results back to JVM.
+    """
+    write_int(len(_profile_results), outfile)
+    for result_id, result in _profile_results.items():
+        write_long(result_id, outfile)
+        pickleSer._write_with_length(result, outfile)

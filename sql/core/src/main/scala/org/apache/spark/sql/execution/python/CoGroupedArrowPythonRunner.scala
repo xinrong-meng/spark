@@ -27,6 +27,7 @@ import org.apache.spark.api.python.{BasePythonRunner, ChainedPythonFunctions, Py
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.arrow.ArrowWriter
 import org.apache.spark.sql.execution.metric.SQLMetric
+import org.apache.spark.sql.execution.python.PythonUDFProfiling.ProfilerAccumulator
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.ArrowUtils
@@ -39,7 +40,7 @@ import org.apache.spark.util.Utils
  * groups them in Python, and receive it back in JVM as batches of single DataFrame.
  */
 class CoGroupedArrowPythonRunner(
-    funcs: Seq[ChainedPythonFunctions],
+    funcs: Seq[(ChainedPythonFunctions, Long)],
     evalType: Int,
     argOffsets: Array[Array[Int]],
     leftSchema: StructType,
@@ -47,15 +48,17 @@ class CoGroupedArrowPythonRunner(
     timeZoneId: String,
     conf: Map[String, String],
     override val pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
+    jobArtifactUUID: Option[String],
+    profiler: Option[String],
+    val profilerAccumulators: Map[Long, ProfilerAccumulator])
   extends BasePythonRunner[
     (Iterator[InternalRow], Iterator[InternalRow]), ColumnarBatch](
-    funcs, evalType, argOffsets, jobArtifactUUID)
+    funcs.map(_._1), evalType, argOffsets, jobArtifactUUID)
   with BasicPythonArrowOutput {
 
   override val pythonExec: String =
     SQLConf.get.pysparkWorkerPythonExecutable.getOrElse(
-      funcs.head.funcs.head.pythonExec)
+      funcs.head._1.funcs.head.pythonExec)
 
   override val faultHandlerEnabled: Boolean = SQLConf.get.pythonUDFWorkerFaulthandlerEnabled
 
@@ -79,7 +82,7 @@ class CoGroupedArrowPythonRunner(
           PythonRDD.writeUTF(v, dataOut)
         }
 
-        PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets)
+        PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets, profiler)
       }
 
       override def writeNextInputToStream(dataOut: DataOutputStream): Boolean = {

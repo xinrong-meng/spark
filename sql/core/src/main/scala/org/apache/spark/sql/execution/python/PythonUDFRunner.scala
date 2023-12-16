@@ -24,23 +24,25 @@ import org.apache.spark._
 import org.apache.spark.api.python._
 import org.apache.spark.sql.execution.metric.SQLMetric
 import org.apache.spark.sql.execution.python.EvalPythonExec.ArgumentMetadata
+import org.apache.spark.sql.execution.python.PythonUDFProfiling.ProfilerAccumulator
 import org.apache.spark.sql.internal.SQLConf
 
 /**
  * A helper class to run Python UDFs in Spark.
  */
 abstract class BasePythonUDFRunner(
-    funcs: Seq[ChainedPythonFunctions],
+    funcs: Seq[(ChainedPythonFunctions, Long)],
     evalType: Int,
     argOffsets: Array[Array[Int]],
     pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
+    jobArtifactUUID: Option[String],
+    profilerAccumulators: Map[Long, ProfilerAccumulator])
   extends BasePythonRunner[Array[Byte], Array[Byte]](
-    funcs, evalType, argOffsets, jobArtifactUUID) {
+    funcs.map(_._1), evalType, argOffsets, jobArtifactUUID) {
 
   override val pythonExec: String =
     SQLConf.get.pysparkWorkerPythonExecutable.getOrElse(
-      funcs.head.funcs.head.pythonExec)
+      funcs.head._1.funcs.head.pythonExec)
 
   override val simplifiedTraceback: Boolean = SQLConf.get.pysparkSimplifiedTraceback
 
@@ -107,34 +109,44 @@ abstract class BasePythonUDFRunner(
           }
         } catch handleException
       }
+
+      protected override def receiveProfileResults(): Unit = {
+        PythonWorkerUtils.receiveProfileResults(profilerAccumulators, stream)
+      }
     }
   }
 }
 
 class PythonUDFRunner(
-    funcs: Seq[ChainedPythonFunctions],
+    funcs: Seq[(ChainedPythonFunctions, Long)],
     evalType: Int,
     argOffsets: Array[Array[Int]],
     pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
-  extends BasePythonUDFRunner(funcs, evalType, argOffsets, pythonMetrics, jobArtifactUUID) {
+    jobArtifactUUID: Option[String],
+    profiler: Option[String],
+    profilerAccumulators: Map[Long, ProfilerAccumulator])
+  extends BasePythonUDFRunner(funcs, evalType, argOffsets, pythonMetrics, jobArtifactUUID,
+    profilerAccumulators) {
 
   override protected def writeUDF(dataOut: DataOutputStream): Unit = {
-    PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets)
+    PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets, profiler)
   }
 }
 
 class PythonUDFWithNamedArgumentsRunner(
-    funcs: Seq[ChainedPythonFunctions],
+    funcs: Seq[(ChainedPythonFunctions, Long)],
     evalType: Int,
     argMetas: Array[Array[ArgumentMetadata]],
     pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
+    jobArtifactUUID: Option[String],
+    profiler: Option[String],
+    profilerAccumulators: Map[Long, ProfilerAccumulator])
   extends BasePythonUDFRunner(
-    funcs, evalType, argMetas.map(_.map(_.offset)), pythonMetrics, jobArtifactUUID) {
+    funcs, evalType, argMetas.map(_.map(_.offset)), pythonMetrics, jobArtifactUUID,
+    profilerAccumulators) {
 
   override protected def writeUDF(dataOut: DataOutputStream): Unit = {
-    PythonUDFRunner.writeUDFs(dataOut, funcs, argMetas)
+    PythonUDFRunner.writeUDFs(dataOut, funcs, argMetas, profiler)
   }
 }
 
@@ -142,10 +154,17 @@ object PythonUDFRunner {
 
   def writeUDFs(
       dataOut: DataOutputStream,
-      funcs: Seq[ChainedPythonFunctions],
-      argOffsets: Array[Array[Int]]): Unit = {
+      funcs: Seq[(ChainedPythonFunctions, Long)],
+      argOffsets: Array[Array[Int]],
+      profiler: Option[String]): Unit = {
+    profiler match {
+      case Some(p) =>
+        dataOut.writeBoolean(true)
+        dataOut.writeUTF(p)
+      case _ => dataOut.writeBoolean(false)
+    }
     dataOut.writeInt(funcs.length)
-    funcs.zip(argOffsets).foreach { case (chained, offsets) =>
+    funcs.zip(argOffsets).foreach { case ((chained, resultId), offsets) =>
       dataOut.writeInt(offsets.length)
       offsets.foreach { offset =>
         dataOut.writeInt(offset)
@@ -154,15 +173,25 @@ object PythonUDFRunner {
       chained.funcs.foreach { f =>
         PythonWorkerUtils.writePythonFunction(f, dataOut)
       }
+      if (profiler.nonEmpty) {
+        dataOut.writeLong(resultId)
+      }
     }
   }
 
   def writeUDFs(
       dataOut: DataOutputStream,
-      funcs: Seq[ChainedPythonFunctions],
-      argMetas: Array[Array[ArgumentMetadata]]): Unit = {
+      funcs: Seq[(ChainedPythonFunctions, Long)],
+      argMetas: Array[Array[ArgumentMetadata]],
+      profiler: Option[String]): Unit = {
+    profiler match {
+      case Some(p) =>
+        dataOut.writeBoolean(true)
+        PythonWorkerUtils.writeUTF(p, dataOut)
+      case _ => dataOut.writeBoolean(false)
+    }
     dataOut.writeInt(funcs.length)
-    funcs.zip(argMetas).foreach { case (chained, metas) =>
+    funcs.zip(argMetas).foreach { case ((chained, resultId), metas) =>
       dataOut.writeInt(metas.length)
       metas.foreach {
         case ArgumentMetadata(offset, name) =>
@@ -178,6 +207,9 @@ object PythonUDFRunner {
       dataOut.writeInt(chained.funcs.length)
       chained.funcs.foreach { f =>
         PythonWorkerUtils.writePythonFunction(f, dataOut)
+      }
+      if (profiler.nonEmpty) {
+        dataOut.writeLong(resultId)
       }
     }
   }

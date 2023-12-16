@@ -30,6 +30,7 @@ import faulthandler
 from pyspark.accumulators import _accumulatorRegistry
 from pyspark.java_gateway import local_connect_and_auth
 from pyspark.taskcontext import BarrierTaskContext, TaskContext
+from pyspark.profiler import PStatsParam
 from pyspark.resource import ResourceInformation
 from pyspark.rdd import PythonEvalType
 from pyspark.serializers import (
@@ -73,10 +74,12 @@ from pyspark.worker_util import (
     read_command,
     pickleSer,
     send_accumulator_updates,
+    send_profile_results,
     setup_broadcasts,
     setup_memory_limits,
     setup_spark_files,
     utf8_deserializer,
+    _profile_results,
 )
 
 
@@ -688,7 +691,7 @@ def wrap_kwargs_support(f, args_offsets, kwargs_offsets):
         return f, args_offsets
 
 
-def read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index):
+def read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index, profiler=None):
     num_arg = read_int(infile)
 
     if eval_type in (
@@ -721,15 +724,41 @@ def read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index):
         else:
             chained_func = chain(chained_func, f)
 
+    if profiler == "perf":
+        import cProfile
+        import pstats
+
+        result_id = read_long(infile)
+        _profile_results[result_id] = PStatsParam.zero(None)
+
+        def profiling_func(*args, **kwargs):
+            pr = cProfile.Profile()
+            ret = pr.runcall(chained_func, *args, **kwargs)
+            st = pstats.Stats(pr)
+            st.stream = None  # make it picklable
+            st.strip_dirs()
+
+            _profile_results[result_id] = PStatsParam.addInPlace(_profile_results[result_id], st)
+
+            return ret
+
+    elif profiler == "memory":
+        # FIXME
+        result_id = read_long(infile)
+        profiling_func = chained_func
+
+    else:
+        profiling_func = chained_func
+
     if eval_type in (
         PythonEvalType.SQL_SCALAR_PANDAS_ITER_UDF,
         PythonEvalType.SQL_ARROW_BATCHED_UDF,
     ):
-        func = chained_func
+        func = profiling_func
     else:
         # make sure StopIteration's raised in the user code are not ignored
         # when they are processed in a for loop, raise them as RuntimeError's instead
-        func = fail_on_stopiteration(chained_func)
+        func = fail_on_stopiteration(profiling_func)
 
     # the last returnType will be the return type of UDF
     if eval_type == PythonEvalType.SQL_SCALAR_PANDAS_UDF:
@@ -1403,6 +1432,12 @@ def read_udfs(pickleSer, infile, eval_type):
     else:
         ser = BatchedSerializer(CPickleSerializer(), 100)
 
+    is_profiling = read_bool(infile)
+    if is_profiling:
+        profiler = utf8_deserializer.loads(infile)
+    else:
+        profiler = None
+
     num_udfs = read_int(infile)
 
     is_scalar_iter = eval_type == PythonEvalType.SQL_SCALAR_PANDAS_ITER_UDF
@@ -1624,7 +1659,16 @@ def read_udfs(pickleSer, infile, eval_type):
     else:
         udfs = []
         for i in range(num_udfs):
-            udfs.append(read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index=i))
+            udfs.append(
+                read_single_udf(
+                    pickleSer,
+                    infile,
+                    eval_type,
+                    runner_conf,
+                    udf_index=i,
+                    profiler=profiler,
+                )
+            )
 
         def mapper(a):
             result = tuple(f(*[a[o] for o in arg_offsets]) for arg_offsets, f in udfs)
@@ -1705,6 +1749,7 @@ def main(infile, outfile):
         setup_broadcasts(infile)
 
         _accumulatorRegistry.clear()
+        _profile_results.clear()
         eval_type = read_int(infile)
         if eval_type == PythonEvalType.NON_UDF:
             func, profiler, deserializer, serializer = read_command(pickleSer, infile)
@@ -1749,6 +1794,7 @@ def main(infile, outfile):
     # Mark the beginning of the accumulators section of the output
     write_int(SpecialLengths.END_OF_DATA_SECTION, outfile)
     send_accumulator_updates(outfile)
+    send_profile_results(outfile)
 
     # check end of stream
     if read_int(infile) == SpecialLengths.END_OF_STREAM:

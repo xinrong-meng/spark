@@ -36,6 +36,7 @@ import org.apache.spark.sql.catalyst.types.DataTypeUtils
 import org.apache.spark.sql.execution.metric.SQLMetric
 import org.apache.spark.sql.execution.python.ApplyInPandasWithStatePythonRunner.{COUNT_COLUMN_SCHEMA_FROM_PYTHON_WORKER, InType, OutType, OutTypeForState, STATE_METADATA_SCHEMA_FROM_PYTHON_WORKER}
 import org.apache.spark.sql.execution.python.ApplyInPandasWithStateWriter.STATE_METADATA_SCHEMA
+import org.apache.spark.sql.execution.python.PythonUDFProfiling.ProfilerAccumulator
 import org.apache.spark.sql.execution.streaming.GroupStateImpl
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
@@ -51,7 +52,7 @@ import org.apache.spark.sql.vectorized.{ArrowColumnVector, ColumnarBatch}
  * and output along with data, which requires different struct on Arrow RecordBatch.
  */
 class ApplyInPandasWithStatePythonRunner(
-    funcs: Seq[ChainedPythonFunctions],
+    funcs: Seq[(ChainedPythonFunctions, Long)],
     evalType: Int,
     argOffsets: Array[Array[Int]],
     inputSchema: StructType,
@@ -62,14 +63,16 @@ class ApplyInPandasWithStatePythonRunner(
     outputSchema: StructType,
     stateValueSchema: StructType,
     override val pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
-  extends BasePythonRunner[InType, OutType](funcs, evalType, argOffsets, jobArtifactUUID)
+    jobArtifactUUID: Option[String],
+    profiler: Option[String],
+    val profilerAccumulators: Map[Long, ProfilerAccumulator])
+  extends BasePythonRunner[InType, OutType](funcs.map(_._1), evalType, argOffsets, jobArtifactUUID)
   with PythonArrowInput[InType]
   with PythonArrowOutput[OutType] {
 
   override val pythonExec: String =
     SQLConf.get.pysparkWorkerPythonExecutable.getOrElse(
-      funcs.head.funcs.head.pythonExec)
+      funcs.head._1.funcs.head.pythonExec)
 
   override val faultHandlerEnabled: Boolean = SQLConf.get.pythonUDFWorkerFaulthandlerEnabled
 
@@ -108,7 +111,7 @@ class ApplyInPandasWithStatePythonRunner(
   private val stateRowDeserializer = stateEncoder.createDeserializer()
 
   override protected def writeUDF(dataOut: DataOutputStream): Unit = {
-    PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets)
+    PythonUDFRunner.writeUDFs(dataOut, funcs, argOffsets, profiler)
   }
 
   /**

@@ -25,6 +25,7 @@ import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.catalyst.types.DataTypeUtils
 import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanHelper
 import org.apache.spark.sql.execution.columnar.InMemoryTableScanExec
+import org.apache.spark.sql.execution.python.PythonUDFProfiling
 import org.apache.spark.sql.types.StructType
 
 /**
@@ -98,6 +99,8 @@ object CollectMetricsExec extends AdaptiveSparkPlanHelper {
     val metrics = collectWithSubqueries(plan) {
       case collector: CollectMetricsExec =>
         Map(collector.name -> collector.collectedMetrics)
+      case collector: PythonUDFProfiling =>
+        collector.collectedProfilerResults
       case tableScan: InMemoryTableScanExec =>
         CollectMetricsExec.collect(tableScan.relation.cachedPlan)
     }

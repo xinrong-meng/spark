@@ -25,8 +25,9 @@ import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.arrow.vector.ipc.ArrowStreamReader
 
 import org.apache.spark.{SparkEnv, TaskContext}
-import org.apache.spark.api.python.{BasePythonRunner, PythonWorker, SpecialLengths}
+import org.apache.spark.api.python.{BasePythonRunner, PythonWorker, PythonWorkerUtils, SpecialLengths}
 import org.apache.spark.sql.execution.metric.SQLMetric
+import org.apache.spark.sql.execution.python.PythonUDFProfiling.ProfilerAccumulator
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.{ArrowColumnVector, ColumnarBatch, ColumnVector}
@@ -38,6 +39,8 @@ import org.apache.spark.sql.vectorized.{ArrowColumnVector, ColumnarBatch, Column
 private[python] trait PythonArrowOutput[OUT <: AnyRef] { self: BasePythonRunner[_, OUT] =>
 
   protected def pythonMetrics: Map[String, SQLMetric]
+
+  protected def profilerAccumulators: Map[Long, ProfilerAccumulator]
 
   protected def handleMetadataAfterExec(stream: DataInputStream): Unit = { }
 
@@ -121,6 +124,10 @@ private[python] trait PythonArrowOutput[OUT <: AnyRef] { self: BasePythonRunner[
             }
           }
         } catch handleException
+      }
+
+      protected override def receiveProfileResults(): Unit = {
+        PythonWorkerUtils.receiveProfileResults(profilerAccumulators, stream)
       }
     }
   }

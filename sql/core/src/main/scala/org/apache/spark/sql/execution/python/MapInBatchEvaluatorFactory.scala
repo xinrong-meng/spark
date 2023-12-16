@@ -24,12 +24,13 @@ import org.apache.spark.api.python.ChainedPythonFunctions
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.metric.SQLMetric
+import org.apache.spark.sql.execution.python.PythonUDFProfiling.ProfilerAccumulator
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.vectorized.{ArrowColumnVector, ColumnarBatch}
 
 class MapInBatchEvaluatorFactory(
     output: Seq[Attribute],
-    chainedFunc: Seq[ChainedPythonFunctions],
+    chainedFunc: Seq[(ChainedPythonFunctions, Long)],
     outputTypes: StructType,
     batchSize: Int,
     pythonEvalType: Int,
@@ -37,8 +38,10 @@ class MapInBatchEvaluatorFactory(
     largeVarTypes: Boolean,
     pythonRunnerConf: Map[String, String],
     val pythonMetrics: Map[String, SQLMetric],
-    jobArtifactUUID: Option[String])
-    extends PartitionEvaluatorFactory[InternalRow, InternalRow] {
+    jobArtifactUUID: Option[String],
+    profiler: Option[String],
+    profilerAccumulators: Map[Long, ProfilerAccumulator])
+  extends PartitionEvaluatorFactory[InternalRow, InternalRow] {
 
   override def createEvaluator(): PartitionEvaluator[InternalRow, InternalRow] =
     new MapInBatchEvaluator
@@ -70,7 +73,9 @@ class MapInBatchEvaluatorFactory(
         largeVarTypes,
         pythonRunnerConf,
         pythonMetrics,
-        jobArtifactUUID).compute(batchIter, context.partitionId(), context)
+        jobArtifactUUID,
+        profiler,
+        profilerAccumulators).compute(batchIter, context.partitionId(), context)
 
       val unsafeProj = UnsafeProjection.create(output, output)
 

@@ -67,6 +67,7 @@ from pyspark.sql.connect.streaming.readwriter import DataStreamReader
 from pyspark.sql.connect.streaming.query import StreamingQueryManager
 from pyspark.sql.pandas.serializers import ArrowStreamPandasSerializer
 from pyspark.sql.pandas.types import to_arrow_schema, to_arrow_type, _deduplicate_field_names
+from pyspark.sql.profiler import ProfilerCollector
 from pyspark.sql.session import classproperty, SparkSession as PySparkSession
 from pyspark.sql.types import (
     _infer_schema,
@@ -918,6 +919,15 @@ class SparkSession:
     @property
     def session_id(self) -> str:
         return self._session_id
+
+    @property
+    def _profiler_collector(self) -> ProfilerCollector:
+        return self._client._profiler_collector
+
+    def show_perf_profiles(self, id: Optional[int] = None) -> None:
+        self._profiler_collector.show_perf_profiles(id)
+
+    show_perf_profiles.__doc__ = PySparkSession.show_perf_profiles.__doc__
 
 
 SparkSession.__doc__ = PySparkSession.__doc__

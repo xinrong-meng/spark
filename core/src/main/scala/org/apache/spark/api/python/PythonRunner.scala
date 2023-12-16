@@ -526,6 +526,8 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
       // read some accumulator updates:
       PythonWorkerUtils.receiveAccumulatorUpdates(maybeAccumulator, stream)
 
+      receiveProfileResults()
+
       // Check whether the worker is ready to be re-used.
       if (stream.readInt() == SpecialLengths.END_OF_STREAM) {
         if (reuseWorker && releasedOrClosed.compareAndSet(false, true)) {
@@ -534,6 +536,10 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
         }
       }
       eos = true
+    }
+
+    protected def receiveProfileResults(): Unit = {
+      require(stream.readInt() == 0)
     }
 
     protected val handleException: PartialFunction[Throwable, OUT] = {

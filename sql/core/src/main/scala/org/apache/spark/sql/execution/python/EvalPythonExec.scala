@@ -58,7 +58,7 @@ object EvalPythonExec {
  * there should be always some rows buffered in the socket or Python process, so the pulling from
  * RowQueue ALWAYS happened after pushing into it.
  */
-trait EvalPythonExec extends UnaryExecNode {
+trait EvalPythonExec extends UnaryExecNode with PythonUDFProfiling {
   def udfs: Seq[PythonUDF]
   def resultAttrs: Seq[Attribute]
 
@@ -70,6 +70,7 @@ trait EvalPythonExec extends UnaryExecNode {
 
   protected override def doExecute(): RDD[InternalRow] = {
     val inputRDD = child.execute().map(_.copy())
+    val evaluatorFactory = this.evaluatorFactory
     if (conf.usePartitionEvaluator) {
       inputRDD.mapPartitionsWithEvaluator(evaluatorFactory)
     } else {

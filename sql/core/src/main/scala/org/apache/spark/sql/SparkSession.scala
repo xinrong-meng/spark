@@ -47,6 +47,7 @@ import org.apache.spark.sql.errors.QueryCompilationErrors
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.command.ExternalCommandExecutor
 import org.apache.spark.sql.execution.datasources.{DataSource, LogicalRelation}
+import org.apache.spark.sql.execution.python.{PythonUDFProfilingListener, PythonUDFProfilingListenerHelper}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.internal._
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
@@ -922,6 +923,10 @@ class SparkSession private(
 
   private[sql] def leafNodeDefaultParallelism: Int = {
     conf.get(SQLConf.LEAF_NODE_DEFAULT_PARALLELISM).getOrElse(sparkContext.defaultParallelism)
+  }
+
+  private[sql] def addProfileResultListener(listener: PythonUDFProfilingListener): Unit = {
+    listenerManager.register(new PythonUDFProfilingListenerHelper(listener))
   }
 }
 

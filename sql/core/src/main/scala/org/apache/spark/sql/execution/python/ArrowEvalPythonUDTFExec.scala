@@ -71,7 +71,9 @@ case class ArrowEvalPythonUDTFExec(
       largeVarTypes,
       pythonRunnerConf,
       pythonMetrics,
-      jobArtifactUUID).compute(batchIter, context.partitionId(), context)
+      jobArtifactUUID,
+      None,
+      Map.empty).compute(batchIter, context.partitionId(), context) // FIXME
 
     columnarBatchIter.map { batch =>
       // UDTF returns a StructType column in ColumnarBatch. Flatten the columnar batch here.

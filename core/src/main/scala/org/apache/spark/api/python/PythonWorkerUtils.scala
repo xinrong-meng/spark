@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets
 import org.apache.spark.{SparkEnv, SparkFiles}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.Logging
+import org.apache.spark.util.CollectionAccumulator
 
 private[spark] object PythonWorkerUtils extends Logging {
 
@@ -191,6 +192,17 @@ private[spark] object PythonWorkerUtils extends Logging {
     (1 to numAccumulatorUpdates).foreach { _ =>
       val update = readBytes(dataIn)
       maybeAccumulator.foreach(_.add(update))
+    }
+  }
+
+  def receiveProfileResults(
+      profilerAccumulators: Map[Long, CollectionAccumulator[Array[Byte]]],
+      dataIn: DataInputStream): Unit = {
+    val numProfileResults = dataIn.readInt()
+    (1 to numProfileResults).foreach { _ =>
+      val resultId = dataIn.readLong()
+      val serializedResult = readBytes(dataIn)
+      profilerAccumulators.get(resultId).foreach(_.add(serializedResult))
     }
   }
 }
