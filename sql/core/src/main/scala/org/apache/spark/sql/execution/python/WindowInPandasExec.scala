@@ -87,7 +87,8 @@ case class WindowInPandasExec(
         orderSpec,
         child.output,
         longMetric("spillSize"),
-        pythonMetrics)
+        pythonMetrics,
+        None) // FIXME
 
     // Start processing.
     if (conf.usePartitionEvaluator) {

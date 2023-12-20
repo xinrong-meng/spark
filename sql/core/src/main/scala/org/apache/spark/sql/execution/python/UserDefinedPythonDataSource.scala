@@ -360,7 +360,7 @@ case class UserDefinedPythonDataSource(dataSourceCls: PythonFunction) {
     val pythonRunnerConf = ArrowPythonRunner.getPythonRunnerConfMap(conf)
     new MapInBatchEvaluatorFactory(
       toAttributes(outputSchema),
-      Seq(ChainedPythonFunctions(Seq(pythonUDF.func))),
+      Seq((ChainedPythonFunctions(Seq(pythonUDF.func)), pythonUDF.resultId.id)),
       inputSchema,
       conf.arrowMaxRecordsPerBatch,
       pythonEvalType,
@@ -368,7 +368,8 @@ case class UserDefinedPythonDataSource(dataSourceCls: PythonFunction) {
       conf.arrowUseLargeVarTypes,
       pythonRunnerConf,
       metrics,
-      jobArtifactUUID)
+      jobArtifactUUID,
+      None) // FIXME
   }
 
   def createPythonMetrics(): Array[CustomMetric] = {
