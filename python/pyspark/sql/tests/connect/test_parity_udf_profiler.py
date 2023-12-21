@@ -19,7 +19,6 @@ import os
 
 from pyspark.sql.tests.test_udf_profiler import UDFProfiler2TestsMixin, _do_computation
 from pyspark.testing.connectutils import ReusedConnectTestCase
-from pyspark.testing.utils import eventually
 
 
 class UDFProfilerParityTests(UDFProfiler2TestsMixin, ReusedConnectTestCase):
@@ -31,21 +30,16 @@ class UDFProfilerParityTests(UDFProfiler2TestsMixin, ReusedConnectTestCase):
         with self.sql_conf({"spark.sql.pyspark.udf.profiler": "perf"}):
             _do_computation(self.spark, action=action)
 
-        profile_results = self.spark._profiler_collector._perf_profile_results
+        self.assertEqual(6, len(self.profile_results), str(list(self.profile_results)))
 
-        def check():
-            self.assertEqual(6, len(profile_results), str(list(profile_results)))
+        for id in self.profile_results:
+            with self.trap_stdout() as io:
+                self.spark.show_perf_profiles(id)
 
-            for id in profile_results:
-                with self.trap_stdout() as io:
-                    self.spark.show_perf_profiles(id)
-
-                self.assertIn(f"Profile of UDF<id={id}>", io.getvalue())
-                self.assertRegex(
-                    io.getvalue(), f"10.*{os.path.basename(inspect.getfile(_do_computation))}"
-                )
-
-        eventually(timeout=1, catch_assertions=True)(check)()
+            self.assertIn(f"Profile of UDF<id={id}>", io.getvalue())
+            self.assertRegex(
+                io.getvalue(), f"10.*{os.path.basename(inspect.getfile(_do_computation))}"
+            )
 
 
 if __name__ == "__main__":

@@ -34,14 +34,14 @@ class ProfileResultsParam(AccumulatorParam[ProfileResults]):
     @staticmethod
     def addInPlace(value1: ProfileResults, value2: ProfileResults) -> ProfileResults:
         if value1 is None or len(value1) == 0:
-            return value2
+            value1 = {}
         if value2 is None or len(value2) == 0:
-            return value1
+            value2 = {}
 
         value = value1.copy()
-        for key, (perf, mem) in value2.items():
+        for key, (perf, mem, *_) in value2.items():
             if key in value1:
-                orig_perf, orig_mem = value1[key]
+                orig_perf, orig_mem, *_ = value1[key]
             else:
                 orig_perf, orig_mem = (PStatsParam.zero(None), MemUsageParam.zero(None))
             value[key] = (
@@ -107,7 +107,7 @@ class AccumulatorProfilerCollector(ProfilerCollector):
     def _perf_profile_results(self) -> Dict[int, pstats.Stats]:
         return {
             result_id: perf
-            for result_id, (perf, _) in self._accumulator.value.items()
+            for result_id, (perf, _, *_) in self._accumulator.value.items()
             if perf is not None
         }
 
@@ -115,7 +115,7 @@ class AccumulatorProfilerCollector(ProfilerCollector):
     def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
         return {
             result_id: mem
-            for result_id, (_, mem) in self._accumulator.value.items()
+            for result_id, (_, mem, *_) in self._accumulator.value.items()
             if mem is not None
         }
 

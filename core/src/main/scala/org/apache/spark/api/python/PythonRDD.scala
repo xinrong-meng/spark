@@ -83,7 +83,7 @@ private[spark] trait PythonFunction {
   def pythonExec: String
   def pythonVer: String
   def broadcastVars: JList[Broadcast[PythonBroadcast]]
-  def accumulator: PythonAccumulatorV2
+  def accumulator: CollectionAccumulator[Array[Byte]]
 }
 
 /**
@@ -96,7 +96,7 @@ private[spark] case class SimplePythonFunction(
     pythonExec: String,
     pythonVer: String,
     broadcastVars: JList[Broadcast[PythonBroadcast]],
-    accumulator: PythonAccumulatorV2) extends PythonFunction {
+    accumulator: CollectionAccumulator[Array[Byte]]) extends PythonFunction {
 
   def this(
       command: Array[Byte],
@@ -105,7 +105,7 @@ private[spark] case class SimplePythonFunction(
       pythonExec: String,
       pythonVer: String,
       broadcastVars: JList[Broadcast[PythonBroadcast]],
-      accumulator: PythonAccumulatorV2) = {
+      accumulator: CollectionAccumulator[Array[Byte]]) = {
     this(command.toImmutableArraySeq,
       envVars, pythonIncludes, pythonExec, pythonVer, broadcastVars, accumulator)
   }

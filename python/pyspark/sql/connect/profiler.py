@@ -18,7 +18,7 @@ import pstats
 from typing import Dict
 
 from pyspark.profiler import CodeMapDict
-from pyspark.sql.profiler import ProfilerCollector, ProfileResultsParam
+from pyspark.sql.profiler import ProfilerCollector, ProfileResults, ProfileResultsParam
 
 
 class ConnectProfilerCollector(ProfilerCollector):
@@ -28,16 +28,26 @@ class ConnectProfilerCollector(ProfilerCollector):
 
     @property
     def _perf_profile_results(self) -> Dict[int, pstats.Stats]:
-        return {
-            result_id: perf
-            for result_id, (perf, _) in self._profile_results.items()
-            if perf is not None
-        }
+        with self._lock:
+            return {
+                result_id: perf
+                for result_id, (perf, _, *_) in self._profile_results.items()
+                if perf is not None
+            }
 
     @property
     def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
-        return {
-            result_id: mem
-            for result_id, (_, mem) in self._profile_results.items()
-            if mem is not None
-        }
+        with self._lock:
+            return {
+                result_id: mem
+                for result_id, (_, mem, *_) in self._profile_results.items()
+                if mem is not None
+            }
+
+    def _update(self, update: ProfileResults) -> None:
+        with self._lock:
+            self._profile_results = ProfileResultsParam.addInPlace(self._profile_results, update)
+
+    def _clear(self) -> None:
+        with self._lock:
+            self._profile_results.clear()

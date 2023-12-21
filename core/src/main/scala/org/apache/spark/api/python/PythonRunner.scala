@@ -146,10 +146,10 @@ private[spark] abstract class BasePythonRunner[IN, OUT](
     }.getOrElse("pyspark.worker")
 
   // TODO: support accumulator in multiple UDF
-  protected val accumulator: PythonAccumulatorV2 = funcs.head.funcs.head.accumulator
+  protected val accumulator: CollectionAccumulator[Array[Byte]] = funcs.head.funcs.head.accumulator
 
   // Python accumulator is always set in production except in tests. See SPARK-27893
-  private val maybeAccumulator: Option[PythonAccumulatorV2] = Option(accumulator)
+  private val maybeAccumulator: Option[CollectionAccumulator[Array[Byte]]] = Option(accumulator)
 
   // Expose a ServerSocket to support method calls via socket from Python side. Only relevant for
   // for tasks that are a part of barrier stage, refer [[BarrierTaskContext]] for details.

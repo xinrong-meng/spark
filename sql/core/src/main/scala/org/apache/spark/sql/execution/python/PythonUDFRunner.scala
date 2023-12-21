@@ -163,7 +163,7 @@ object PythonUDFRunner {
       chained.funcs.foreach { f =>
         PythonWorkerUtils.writePythonFunction(f, dataOut)
       }
-      if (profiler.nonEmpty) {
+      if (profiler.isDefined) {
         dataOut.writeLong(resultId)
       }
     }
@@ -198,7 +198,7 @@ object PythonUDFRunner {
       chained.funcs.foreach { f =>
         PythonWorkerUtils.writePythonFunction(f, dataOut)
       }
-      if (profiler.nonEmpty) {
+      if (profiler.isDefined) {
         dataOut.writeLong(resultId)
       }
     }

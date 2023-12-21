@@ -24,6 +24,7 @@ import javax.annotation.concurrent.GuardedBy
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
@@ -37,7 +38,7 @@ import org.apache.spark.sql.connect.planner.PythonStreamingQueryListener
 import org.apache.spark.sql.connect.planner.StreamingForeachBatchHelper
 import org.apache.spark.sql.connect.service.SessionHolder.{ERROR_CACHE_SIZE, ERROR_CACHE_TIMEOUT_SEC}
 import org.apache.spark.sql.streaming.StreamingQueryListener
-import org.apache.spark.util.{SystemClock, Utils}
+import org.apache.spark.util.{CollectionAccumulator, SystemClock, Utils}
 
 // Unique key identifying session by combination of user, and session id
 case class SessionKey(userId: String, sessionId: String)
@@ -371,6 +372,9 @@ case class SessionHolder(userId: String, sessionId: String, session: SparkSessio
   private[connect] def listListenerIds(): Seq[String] = {
     listenerCache.keySet().asScala.toSeq
   }
+
+  private[connect] val pythonAccumulator: Option[CollectionAccumulator[Array[Byte]]] =
+    Try(session.sparkContext.collectionAccumulator[Array[Byte]]).toOption
 }
 
 object SessionHolder {
