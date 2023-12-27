@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 import pstats
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 from pyspark.profiler import CodeMapDict
 from pyspark.sql.profiler import ProfilerCollector, ProfileResults, ProfileResultsParam
@@ -24,30 +24,17 @@ from pyspark.sql.profiler import ProfilerCollector, ProfileResults, ProfileResul
 class ConnectProfilerCollector(ProfilerCollector):
     def __init__(self) -> None:
         super().__init__()
-        self._profile_results = ProfileResultsParam.zero({})
+        self._value = ProfileResultsParam.zero(None)
 
     @property
-    def _perf_profile_results(self) -> Dict[int, pstats.Stats]:
+    def _profile_results(self) -> Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]:
         with self._lock:
-            return {
-                result_id: perf
-                for result_id, (perf, _, *_) in self._profile_results.items()
-                if perf is not None
-            }
-
-    @property
-    def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
-        with self._lock:
-            return {
-                result_id: mem
-                for result_id, (_, mem, *_) in self._profile_results.items()
-                if mem is not None
-            }
+            return self._value if self._value is not None else {}
 
     def _update(self, update: ProfileResults) -> None:
         with self._lock:
-            self._profile_results = ProfileResultsParam.addInPlace(self._profile_results, update)
+            self._value = ProfileResultsParam.addInPlace(self._profile_results, update)
 
     def _clear(self) -> None:
         with self._lock:
-            self._profile_results.clear()
+            self._value = None

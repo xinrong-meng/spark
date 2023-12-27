@@ -27,7 +27,11 @@ import json
 from typing import Any, Callable, Iterable, Iterator, Optional
 import faulthandler
 
-from pyspark.accumulators import Accumulator, SpecialAccumulatorIds, _accumulatorRegistry
+from pyspark.accumulators import (
+    SpecialAccumulatorIds,
+    _accumulatorRegistry,
+    _deserialize_accumulator,
+)
 from pyspark.java_gateway import local_connect_and_auth
 from pyspark.taskcontext import BarrierTaskContext, TaskContext
 from pyspark.resource import ResourceInformation
@@ -694,10 +698,9 @@ def wrap_perf_profiler(f, result_id):
 
     from pyspark.sql.profiler import ProfileResultsParam
 
-    if SpecialAccumulatorIds.SQL_UDF_PROFIER in _accumulatorRegistry:
-        accumulator = _accumulatorRegistry[SpecialAccumulatorIds.SQL_UDF_PROFIER]
-    else:
-        accumulator = Accumulator(SpecialAccumulatorIds.SQL_UDF_PROFIER, {}, ProfileResultsParam())
+    accumulator = _deserialize_accumulator(
+        SpecialAccumulatorIds.SQL_UDF_PROFIER, None, ProfileResultsParam
+    )
 
     def profiling_func(*args, **kwargs):
         pr = cProfile.Profile()

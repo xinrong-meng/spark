@@ -47,7 +47,7 @@ from pyspark.sql.conf import RuntimeConfig
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
 from pyspark.sql.pandas.conversion import SparkConversionMixin
-from pyspark.sql.profiler import AccumulatorProfilerCollector, ProfilerCollector
+from pyspark.sql.profiler import AccumulatorProfilerCollector
 from pyspark.sql.readwriter import DataFrameReader
 from pyspark.sql.sql_formatter import SQLStringFormatter
 from pyspark.sql.streaming import DataStreamReader
@@ -581,8 +581,6 @@ class SparkSession(SparkConversionMixin):
     _instantiatedSession: ClassVar[Optional["SparkSession"]] = None
     _activeSession: ClassVar[Optional["SparkSession"]] = None
 
-    _profiler_collectors: ClassVar[Dict[JavaObject, ProfilerCollector]] = {}
-
     def __init__(
         self,
         sparkContext: SparkContext,
@@ -626,8 +624,7 @@ class SparkSession(SparkConversionMixin):
             self._jvm.SparkSession.setDefaultSession(self._jsparkSession)
             self._jvm.SparkSession.setActiveSession(self._jsparkSession)
 
-        if jsparkSession not in SparkSession._profiler_collectors:
-            SparkSession._profiler_collectors[jsparkSession] = AccumulatorProfilerCollector()
+        self._profiler_collector = AccumulatorProfilerCollector()
 
     def _repr_html_(self) -> str:
         return """
@@ -1839,8 +1836,6 @@ class SparkSession(SparkConversionMixin):
         """
         from pyspark.sql.context import SQLContext
 
-        SparkSession._profiler_collectors.pop(self._jsparkSession, None)
-
         self._sc.stop()
         # We should clean the default session up. See SPARK-23228.
         assert self._jvm is not None
@@ -2117,10 +2112,6 @@ class SparkSession(SparkConversionMixin):
             error_class="ONLY_SUPPORTED_WITH_SPARK_CONNECT",
             message_parameters={"feature": "SparkSession.clearTags"},
         )
-
-    @property
-    def _profiler_collector(self) -> ProfilerCollector:
-        return SparkSession._profiler_collectors[self._jsparkSession]
 
     def show_perf_profiles(self, id: Optional[int] = None) -> None:
         self._profiler_collector.show_perf_profiles(id)

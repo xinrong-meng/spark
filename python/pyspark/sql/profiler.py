@@ -17,22 +17,29 @@
 from abc import ABC, abstractmethod
 import pstats
 from threading import RLock
-from typing import Dict, Optional, Tuple, cast
+from typing import Dict, Optional, Tuple
 
-from pyspark.accumulators import Accumulator, AccumulatorParam, SpecialAccumulatorIds
+from pyspark.accumulators import (
+    Accumulator,
+    AccumulatorParam,
+    SpecialAccumulatorIds,
+    _accumulatorRegistry,
+)
 from pyspark.profiler import CodeMapDict, MemoryProfiler, MemUsageParam, PStatsParam
 
 
 ProfileResults = Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]
 
 
-class ProfileResultsParam(AccumulatorParam[ProfileResults]):
+class _ProfileResultsParam(AccumulatorParam[Optional[ProfileResults]]):
     @staticmethod
-    def zero(value: ProfileResults) -> ProfileResults:
-        return value or {}
+    def zero(value: Optional[ProfileResults]) -> Optional[ProfileResults]:
+        return value
 
     @staticmethod
-    def addInPlace(value1: ProfileResults, value2: ProfileResults) -> ProfileResults:
+    def addInPlace(
+        value1: Optional[ProfileResults], value2: Optional[ProfileResults]
+    ) -> Optional[ProfileResults]:
         if value1 is None or len(value1) == 0:
             value1 = {}
         if value2 is None or len(value2) == 0:
@@ -51,44 +58,70 @@ class ProfileResultsParam(AccumulatorParam[ProfileResults]):
         return value
 
 
+ProfileResultsParam = _ProfileResultsParam()
+
+
 class ProfilerCollector(ABC):
     def __init__(self) -> None:
         self._lock = RLock()
 
     def show_perf_profiles(self, id: Optional[int] = None) -> None:
         with self._lock:
-            if id is not None:
-                stats = self._perf_profile_results.get(id)
-                if stats is not None:
-                    print("=" * 60)
-                    print(f"Profile of UDF<id={id}>")
-                    print("=" * 60)
-                    stats.sort_stats("time", "cumulative").print_stats()
-            else:
-                for id in sorted(self._perf_profile_results.keys()):
-                    self.show_perf_profiles(id)
+            stats = self._perf_profile_results
+
+        def show(id: int) -> None:
+            s = stats.get(id)
+            if s is not None:
+                print("=" * 60)
+                print(f"Profile of UDF<id={id}>")
+                print("=" * 60)
+                s.sort_stats("time", "cumulative").print_stats()
+
+        if id is not None:
+            show(id)
+        else:
+            for id in sorted(stats.keys()):
+                show(id)
 
     @property
-    @abstractmethod
     def _perf_profile_results(self) -> Dict[int, pstats.Stats]:
-        ...
+        with self._lock:
+            return {
+                result_id: perf
+                for result_id, (perf, _, *_) in self._profile_results.items()
+                if perf is not None
+            }
 
     def show_memory_profiles(self, id: Optional[int] = None) -> None:
         with self._lock:
-            if id is not None:
-                code_map = self._memory_profile_results.get(id)
-                if code_map is not None:
-                    print("=" * 60)
-                    print(f"Profile of UDF<id={id}>")
-                    print("=" * 60)
-                    MemoryProfiler._show_results(code_map)
-            else:
-                for id in sorted(self._memory_profile_results.keys()):
-                    self.show_memory_profiles(id)
+            code_map = self._memory_profile_results
+
+        def show(id: int) -> None:
+            cm = code_map.get(id)
+            if cm is not None:
+                print("=" * 60)
+                print(f"Profile of UDF<id={id}>")
+                print("=" * 60)
+                MemoryProfiler._show_results(cm)
+
+        if id is not None:
+            show(id)
+        else:
+            for id in sorted(code_map.keys()):
+                show(id)
+
+    @property
+    def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
+        with self._lock:
+            return {
+                result_id: mem
+                for result_id, (_, mem, *_) in self._profile_results.items()
+                if mem is not None
+            }
 
     @property
     @abstractmethod
-    def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
+    def _profile_results(self) -> Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]:
         ...
 
     @abstractmethod
@@ -99,25 +132,19 @@ class ProfilerCollector(ABC):
 class AccumulatorProfilerCollector(ProfilerCollector):
     def __init__(self) -> None:
         super().__init__()
-        self._accumulator = Accumulator(
-            SpecialAccumulatorIds.SQL_UDF_PROFIER, cast(ProfileResults, {}), ProfileResultsParam()
-        )
+        if SpecialAccumulatorIds.SQL_UDF_PROFIER in _accumulatorRegistry:
+            self._accumulator = _accumulatorRegistry[SpecialAccumulatorIds.SQL_UDF_PROFIER]
+        else:
+            self._accumulator = Accumulator(
+                SpecialAccumulatorIds.SQL_UDF_PROFIER, None, ProfileResultsParam
+            )
 
     @property
-    def _perf_profile_results(self) -> Dict[int, pstats.Stats]:
-        return {
-            result_id: perf
-            for result_id, (perf, _, *_) in self._accumulator.value.items()
-            if perf is not None
-        }
-
-    @property
-    def _memory_profile_results(self) -> Dict[int, CodeMapDict]:
-        return {
-            result_id: mem
-            for result_id, (_, mem, *_) in self._accumulator.value.items()
-            if mem is not None
-        }
+    def _profile_results(self) -> Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]:
+        with self._lock:
+            value = self._accumulator.value
+            return value if value is not None else {}
 
     def _clear(self) -> None:
-        self._accumulator._value = {}
+        with self._lock:
+            self._accumulator._value = None
