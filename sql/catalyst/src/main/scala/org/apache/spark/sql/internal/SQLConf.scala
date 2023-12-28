@@ -2929,9 +2929,12 @@ object SQLConf {
 
   val PYTHON_UDF_PROFILER =
     buildConf("spark.sql.pyspark.udf.profiler")
-      .doc("")
+      .doc("Configure the Python/Pandas UDF profiler by enabling or disabling it " +
+        "with the option to choose between \"perf\" and \"memory\" types, " +
+        "or unsetting the config disables the profiler. This is disabled by default.")
       .version("4.0.0")
       .stringConf
+      .transform(_.toLowerCase(Locale.ROOT))
       .checkValues(Set("perf", "memory"))
       .createOptional
 

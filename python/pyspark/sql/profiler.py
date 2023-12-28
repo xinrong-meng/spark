@@ -32,6 +32,10 @@ ProfileResults = Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]
 
 
 class _ProfileResultsParam(AccumulatorParam[Optional[ProfileResults]]):
+    """
+    AccumulatorParam for profilers.
+    """
+
     @staticmethod
     def zero(value: Optional[ProfileResults]) -> Optional[ProfileResults]:
         return value
@@ -62,10 +66,27 @@ ProfileResultsParam = _ProfileResultsParam()
 
 
 class ProfilerCollector(ABC):
+    """
+    A base class of profiler collectors for session based profilers.
+
+    This supports cProfiler and memory-profiler enabled by setting a SQL config
+    `spark.sql.pyspark.udf.profiler` to "perf" or "memory".
+    """
+
     def __init__(self) -> None:
         self._lock = RLock()
 
     def show_perf_profiles(self, id: Optional[int] = None) -> None:
+        """
+        Show the perf profile results.
+
+        .. versionadded:: 4.0.0
+
+        Parameters
+        ----------
+        id : int, optional
+            A UDF ID to be shown. If not specified, all the results will be shown.
+        """
         with self._lock:
             stats = self._perf_profile_results
 
@@ -93,6 +114,16 @@ class ProfilerCollector(ABC):
             }
 
     def show_memory_profiles(self, id: Optional[int] = None) -> None:
+        """
+        Show the memory profile results.
+
+        .. versionadded:: 4.0.0
+
+        Parameters
+        ----------
+        id : int, optional
+            A UDF ID to be shown. If not specified, all the results will be shown.
+        """
         with self._lock:
             code_map = self._memory_profile_results
 
@@ -122,10 +153,18 @@ class ProfilerCollector(ABC):
     @property
     @abstractmethod
     def _profile_results(self) -> Dict[int, Tuple[Optional[pstats.Stats], Optional[CodeMapDict]]]:
+        """
+        Get the profile results.
+        """
         ...
 
     @abstractmethod
     def _clear(self) -> None:
+        """
+        Clear the collected profile results.
+
+        This is supposed to be called in tests.
+        """
         ...
 
 

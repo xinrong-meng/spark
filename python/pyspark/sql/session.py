@@ -47,7 +47,7 @@ from pyspark.sql.conf import RuntimeConfig
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.functions import lit
 from pyspark.sql.pandas.conversion import SparkConversionMixin
-from pyspark.sql.profiler import AccumulatorProfilerCollector
+from pyspark.sql.profiler import AccumulatorProfilerCollector, ProfilerCollector
 from pyspark.sql.readwriter import DataFrameReader
 from pyspark.sql.sql_formatter import SQLStringFormatter
 from pyspark.sql.streaming import DataStreamReader
@@ -2115,6 +2115,8 @@ class SparkSession(SparkConversionMixin):
 
     def show_perf_profiles(self, id: Optional[int] = None) -> None:
         self._profiler_collector.show_perf_profiles(id)
+
+    show_perf_profiles.__doc__ = ProfilerCollector.show_perf_profiles.__doc__
 
 
 def _test() -> None:

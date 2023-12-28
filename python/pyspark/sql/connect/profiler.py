@@ -22,6 +22,10 @@ from pyspark.sql.profiler import ProfilerCollector, ProfileResults, ProfileResul
 
 
 class ConnectProfilerCollector(ProfilerCollector):
+    """
+    ProfilerCollector for Spark Connect.
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self._value = ProfileResultsParam.zero(None)

@@ -927,6 +927,8 @@ class SparkSession:
     def show_perf_profiles(self, id: Optional[int] = None) -> None:
         self._profiler_collector.show_perf_profiles(id)
 
+    show_perf_profiles.__doc__ = PySparkSession.show_perf_profiles.__doc__
+
 
 SparkSession.__doc__ = PySparkSession.__doc__
 

@@ -373,6 +373,11 @@ case class SessionHolder(userId: String, sessionId: String, session: SparkSessio
     listenerCache.keySet().asScala.toSeq
   }
 
+  /**
+   * An accumulator for Python executors.
+   *
+   * The accumulated results will be sent to the Python client via observed_metrics message.
+   */
   private[connect] val pythonAccumulator: Option[CollectionAccumulator[Array[Byte]]] =
     Try(session.sparkContext.collectionAccumulator[Array[Byte]]).toOption
 }
