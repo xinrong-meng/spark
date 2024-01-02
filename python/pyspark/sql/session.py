@@ -2118,6 +2118,11 @@ class SparkSession(SparkConversionMixin):
 
     show_perf_profiles.__doc__ = ProfilerCollector.show_perf_profiles.__doc__
 
+    def show_memory_profiles(self, id: Optional[int] = None) -> None:
+        self._profiler_collector.show_memory_profiles(id)
+
+    show_memory_profiles.__doc__ = ProfilerCollector.show_memory_profiles.__doc__
+
 
 def _test() -> None:
     import os
