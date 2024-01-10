@@ -186,9 +186,13 @@ if has_memory_profiler:
             if toplevel_code is None:
                 toplevel_code = code
                 filename = code.co_filename
-                if sub_lines is None or start_line is None:
-                    (sub_lines, start_line) = inspect.getsourcelines(code)
-                linenos = range(start_line, start_line + len(sub_lines))
+
+                if start_line == -1:  # for memory profiler v2
+                    linenos = range(1, 101)  # TODO: configurable limit
+                else:
+                    if sub_lines is None or start_line is None:
+                        (sub_lines, start_line) = inspect.getsourcelines(code)
+                    linenos = range(start_line, start_line + len(sub_lines))
                 self._toplevel.append((filename, code, linenos))
                 self[code] = {}
             else:
@@ -431,6 +435,7 @@ class MemoryProfiler(Profiler):
         template = "{0:>6} {1:>12} {2:>12}  {3:>10}   {4:<}"
 
         for filename, lines in code_map.items():
+            print(lines)
             header = template.format(
                 "Line #", "Mem usage", "Increment", "Occurrences", "Line Contents"
             )
@@ -444,21 +449,24 @@ class MemoryProfiler(Profiler):
             float_format = "{0}.{1}f".format(precision + 4, precision)
             template_mem = "{0:" + float_format + "} MiB"
             for lineno, mem in lines:
-                total_mem: Union[float, str]
-                inc: Union[float, str]
-                occurrences: Union[float, str]
-                if mem:
-                    inc = mem[0]
-                    total_mem = mem[1]
-                    total_mem = template_mem.format(total_mem)
-                    occurrences = mem[2]
-                    inc = template_mem.format(inc)
-                else:
-                    total_mem = ""
-                    inc = ""
-                    occurrences = ""
-                tmp = template.format(lineno, total_mem, inc, occurrences, all_lines[lineno - 1])
-                stream.write(tmp)
+                if lineno <= len(all_lines):
+                    total_mem: Union[float, str]
+                    inc: Union[float, str]
+                    occurrences: Union[float, str]
+                    if mem:
+                        inc = mem[0]
+                        total_mem = mem[1]
+                        total_mem = template_mem.format(total_mem)
+                        occurrences = mem[2]
+                        inc = template_mem.format(inc)
+                    else:
+                        total_mem = ""
+                        inc = ""
+                        occurrences = ""
+                    tmp = template.format(
+                        lineno, total_mem, inc, occurrences, all_lines[lineno - 1]
+                    )
+                    stream.write(tmp)
             stream.write("\n\n")
 
     def show(self, id: int) -> None:

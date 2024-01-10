@@ -718,7 +718,6 @@ def wrap_perf_profiler(f, result_id):
 
 def wrap_memory_profiler(f, result_id):
     # TODO: check has_memory_profiler
-    import dill
 
     from pyspark.sql.profiler import ProfileResultsParam
     from pyspark.profiler import UDFLineProfiler
@@ -730,9 +729,7 @@ def wrap_memory_profiler(f, result_id):
     def profiling_func(*args, **kwargs):
         profiler = UDFLineProfiler()
 
-        source_code = dill.source.getsource(f).rstrip().split('\n')
-        sub_lines = [line + '\n' for line in source_code]
-        wrapped = profiler(f, sub_lines=sub_lines, start_line=1)
+        wrapped = profiler(f, start_line=-1)
         ret = wrapped(*args, **kwargs)
         codemap_dict = {
             filename: list(line_iterator) for filename, line_iterator in profiler.code_map.items()
