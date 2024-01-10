@@ -435,7 +435,6 @@ class MemoryProfiler(Profiler):
         template = "{0:>6} {1:>12} {2:>12}  {3:>10}   {4:<}"
 
         for filename, lines in code_map.items():
-            print(lines)
             header = template.format(
                 "Line #", "Mem usage", "Increment", "Occurrences", "Line Contents"
             )
