@@ -716,7 +716,7 @@ def wrap_perf_profiler(f, result_id):
     return profiling_func
 
 
-def wrap_memory_profiler(f, result_id):
+def wrap_memory_profiler(f, result_id, max_line):
     # TODO: check has_memory_profiler
 
     from pyspark.sql.profiler import ProfileResultsParam
@@ -727,9 +727,9 @@ def wrap_memory_profiler(f, result_id):
     )
 
     def profiling_func(*args, **kwargs):
-        profiler = UDFLineProfiler()
+        profiler = UDFLineProfiler(max_line=max_line)
 
-        wrapped = profiler(f, start_line=-1)
+        wrapped = profiler(f)
         ret = wrapped(*args, **kwargs)
         codemap_dict = {
             filename: list(line_iterator) for filename, line_iterator in profiler.code_map.items()
@@ -779,8 +779,8 @@ def read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index, profil
 
     elif profiler == "memory":
         result_id = read_long(infile)
-        profiling_func = wrap_memory_profiler(chained_func, result_id)
-
+        max_line = runner_conf.get("spark.sql.pyspark.udf.memoryProfiler.maxLine", 100)
+        profiling_func = wrap_memory_profiler(chained_func, result_id, max_line)
     else:
         profiling_func = chained_func
 

@@ -2938,6 +2938,14 @@ object SQLConf {
       .checkValues(Set("perf", "memory"))
       .createOptional
 
+  val PYTHON_UDF_MEMORY_PROFILER_MAX_LINE =
+    buildConf("spark.sql.pyspark.udf.memoryProfiler.maxLine")
+      .doc("Set a limit on the number of lines within a Python/Pandas UDF that the memory " +
+        "profiler can profile. It is set to 100 by default.")
+      .version("4.0.0")
+      .intConf
+      .createWithDefault(100)
+
   val PYTHON_UDF_WORKER_FAULTHANLDER_ENABLED =
     buildConf("spark.sql.execution.pyspark.udf.faulthandler.enabled")
       .doc(

@@ -179,6 +179,7 @@ if has_memory_profiler:
             *,
             sub_lines: Optional[List] = None,
             start_line: Optional[int] = None,
+            max_line: Optional[int] = None,
         ) -> None:
             if code in self:
                 return
@@ -187,8 +188,8 @@ if has_memory_profiler:
                 toplevel_code = code
                 filename = code.co_filename
 
-                if start_line == -1:  # for memory profiler v2
-                    linenos = range(1, 101)  # TODO: configurable limit
+                if max_line is not None:  # for memory profiler v2
+                    linenos = range(1, max_line)
                 else:
                     if sub_lines is None or start_line is None:
                         (sub_lines, start_line) = inspect.getsourcelines(code)
@@ -210,6 +211,7 @@ if has_memory_profiler:
             self.prevlines: List = []
             self.backend = choose_backend(kw.get("backend", None))
             self.prev_lineno = None
+            self.max_line = kw.get("max_line", None)
 
         def __call__(
             self,
@@ -248,7 +250,9 @@ if has_memory_profiler:
             except AttributeError:
                 warnings.warn("Could not extract a code object for the object %r" % func)
             else:
-                self.code_map.add(code, sub_lines=sub_lines, start_line=start_line)
+                self.code_map.add(
+                    code, sub_lines=sub_lines, start_line=start_line, max_line=self.max_line
+                )
 
 
 class PStatsParam(AccumulatorParam[Optional[pstats.Stats]]):
