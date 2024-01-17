@@ -189,7 +189,7 @@ if has_memory_profiler:
                 filename = code.co_filename
 
                 if max_line is not None:  # for memory profiler v2
-                    linenos = range(1, max_line)
+                    linenos = range(1, max_line + 1)
                 else:
                     if sub_lines is None or start_line is None:
                         (sub_lines, start_line) = inspect.getsourcelines(code)
