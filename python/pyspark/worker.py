@@ -780,6 +780,7 @@ def read_single_udf(pickleSer, infile, eval_type, runner_conf, udf_index, profil
     elif profiler == "memory":
         result_id = read_long(infile)
         max_line = runner_conf.get("spark.sql.pyspark.udf.memoryProfiler.maxLine", 100)
+        max_line = int(max_line)
         profiling_func = wrap_memory_profiler(chained_func, result_id, max_line)
     else:
         profiling_func = chained_func
