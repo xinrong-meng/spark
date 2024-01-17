@@ -5296,6 +5296,8 @@ class SQLConf extends Serializable with Logging with SqlApiConf {
 
   def pythonUDFProfiler: Option[String] = getConf(PYTHON_UDF_PROFILER)
 
+  def pythonUDFMemoryProfilerMaxLine: Int = getConf(PYTHON_UDF_MEMORY_PROFILER_MAX_LINE)
+
   def pythonUDFWorkerFaulthandlerEnabled: Boolean = getConf(PYTHON_UDF_WORKER_FAULTHANLDER_ENABLED)
 
   def arrowSparkREnabled: Boolean = getConf(ARROW_SPARKR_EXECUTION_ENABLED)
