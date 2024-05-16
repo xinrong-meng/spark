@@ -5223,6 +5223,72 @@ def broadcast(df: DataFrame) -> DataFrame:
     return DataFrame(cast(JVMView, sc._jvm).functions.broadcast(df._jdf), df.sparkSession)
 
 
+def transpose(
+    df: DataFrame,
+    column_names: Optional[List[str]] = None,
+    column_alias: str = "key",
+    order_by: Optional[Union[Column, List[Column]]] = None,
+) -> DataFrame:
+    """
+    Transpose a PySpark DataFrame, supporting multiple columns for the transpose operation.
+
+    Parameters
+    ----------
+    df : DataFrame
+        The DataFrame to transpose.
+    column_names : list of str, optional
+        List of column names whose concatenated values provide the column names for the transposed table.
+        If none is provided, columns will be named c<n>.
+    column_alias : str, optional
+        Name of the column into which the column names of the subject table gets transposed. The default is `key`.
+    order_by : Column or list of Column, optional
+        Expressions used to order the appearance of the columns in the transposed table.
+        If none is provided and column_names is specified, the order is by the concatenated column names in ascending order.
+
+    Returns
+    -------
+    DataFrame
+        Transposed DataFrame.
+    """
+    temp_df = df
+    pivot_column_name = "__pivot_column"
+    if column_names is None:
+        column_names = []
+    if order_by is None:
+        order_by = col(pivot_column_name).asc()
+    if column_names:
+        temp_df = temp_df.withColumn(
+            pivot_column_name, concat_ws("_", *[col(name) for name in column_names])
+        )
+        pivot_values = [
+            row[pivot_column_name]
+            for row in temp_df.select(pivot_column_name).distinct().orderBy(order_by).collect()
+        ]
+    else:
+        num_rows = df.count()
+        temp_df = temp_df.withColumn(
+            pivot_column_name, concat(lit("c"), monotonically_increasing_id() + 1)
+        )
+        pivot_values = [f"c{i + 1}" for i in range(num_rows)]
+
+    columns_to_keep = [
+        c for c in temp_df.columns if c not in column_names and c != pivot_column_name
+    ]
+    stack_expr = ", ".join(f"'{col}', {col}" for col in columns_to_keep)
+
+    unpivoted_df = temp_df.selectExpr(
+        f"{pivot_column_name}",
+        f"stack({len(columns_to_keep)}, {stack_expr}) as ({column_alias}, value)",
+    )
+
+    transposed_df = (
+        unpivoted_df.groupBy(column_alias)
+        .pivot(pivot_column_name, pivot_values)
+        .agg(first("value"))
+    )
+    return transposed_df
+
+
 @_try_remote_functions
 def coalesce(*cols: "ColumnOrName") -> Column:
     """Returns the first column that is not null.

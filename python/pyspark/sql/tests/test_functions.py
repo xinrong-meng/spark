@@ -29,7 +29,7 @@ from pyspark.sql import Row, Window, functions as F, types
 from pyspark.sql.avro.functions import from_avro, to_avro
 from pyspark.sql.column import Column
 from pyspark.testing.sqlutils import ReusedSQLTestCase, SQLTestUtils
-from pyspark.testing.utils import have_numpy
+from pyspark.testing.utils import have_numpy, assertDataFrameEqual
 
 
 class FunctionsTestsMixin:
@@ -1565,6 +1565,39 @@ class FunctionsTestsMixin:
 
 
 class FunctionsTests(ReusedSQLTestCase, FunctionsTestsMixin):
+    def test_transpose(self):
+        data = [(1, 10, 100), (2, 20, 200), (3, 30, 300)]
+        columns = ["A", "B", "C"]
+        df = self.spark.createDataFrame(data, schema=columns)
+
+        # specifying single column name
+        transposed_df = F.transpose(df, column_names=["A"], column_alias="Index")
+        expected_data = [("B", 10, 20, 30), ("C", 100, 200, 300)]
+        expected_df = self.spark.createDataFrame(expected_data, schema=["Index", "1", "2", "3"])
+        assertDataFrameEqual(transposed_df, expected_df)
+
+        # specifying multiple column names
+        transposed_df = F.transpose(df, column_names=["A", "B"], column_alias="Index")
+        expected_data = [("C", 100, 200, 300)]
+        expected_df = self.spark.createDataFrame(
+            expected_data, schema=["Index", "1_10", "2_20", "3_30"]
+        )
+        assertDataFrameEqual(transposed_df, expected_df)
+
+        # # without specifying column names
+        # transposed_df = F.transpose(df, column_alias="Index")
+        # expected_data = [("A", 1, 2, 3), ("B", 10, 20, 30), ("C", 100, 200, 300)]
+        # expected_df = self.spark.createDataFrame(expected_data, schema=["Index", "c1", "c2", "c3"])
+        # assertDataFrameEqual(transposed_df, expected_df)
+
+        # order_by
+        transposed_df = F.transpose(
+            df, column_names=["A"], column_alias="Index", order_by=F.col("A").desc()
+        )
+        expected_data = [("B", 30, 20, 10), ("C", 300, 200, 100)]
+        expected_df = self.spark.createDataFrame(expected_data, schema=["Index", "3", "2", "1"])
+        assertDataFrameEqual(transposed_df, expected_df)
+
     pass
 
 
