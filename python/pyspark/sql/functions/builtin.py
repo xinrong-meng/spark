@@ -43,6 +43,7 @@ from pyspark.errors import PySparkTypeError, PySparkValueError
 from pyspark.sql.column import Column
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import ArrayType, DataType, StringType, StructType, _from_numpy_type
+from pyspark.sql.window import Window
 
 # Keep UserDefinedFunction import for backwards compatible import; moved in SPARK-22409
 from pyspark.sql.udf import UserDefinedFunction, _create_py_udf  # noqa: F401
@@ -5266,19 +5267,19 @@ def transpose(
         ]
     else:
         num_rows = df.count()
-        temp_df = temp_df.withColumn(
-            pivot_column_name, concat(lit("c"), monotonically_increasing_id() + 1)
-        )
+        windowSpec = Window.orderBy(lit(1))
+        temp_df = temp_df.withColumn(pivot_column_name, concat(lit("c"), row_number().over(windowSpec)))
         pivot_values = [f"c{i + 1}" for i in range(num_rows)]
 
     columns_to_keep = [
         c for c in temp_df.columns if c not in column_names and c != pivot_column_name
     ]
-    stack_expr = ", ".join(f"'{col}', {col}" for col in columns_to_keep)
 
-    unpivoted_df = temp_df.selectExpr(
-        f"{pivot_column_name}",
-        f"stack({len(columns_to_keep)}, {stack_expr}) as ({column_alias}, value)",
+    unpivoted_df = temp_df.unpivot(
+        ids=[pivot_column_name],
+        values=columns_to_keep,
+        variableColumnName=column_alias,
+        valueColumnName="value"
     )
 
     transposed_df = (

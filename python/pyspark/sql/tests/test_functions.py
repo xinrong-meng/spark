@@ -1584,11 +1584,11 @@ class FunctionsTests(ReusedSQLTestCase, FunctionsTestsMixin):
         )
         assertDataFrameEqual(transposed_df, expected_df)
 
-        # # without specifying column names
-        # transposed_df = F.transpose(df, column_alias="Index")
-        # expected_data = [("A", 1, 2, 3), ("B", 10, 20, 30), ("C", 100, 200, 300)]
-        # expected_df = self.spark.createDataFrame(expected_data, schema=["Index", "c1", "c2", "c3"])
-        # assertDataFrameEqual(transposed_df, expected_df)
+        # without specifying column names
+        transposed_df = F.transpose(df, column_alias="Index")
+        expected_data = [("A", 1, 2, 3), ("B", 10, 20, 30), ("C", 100, 200, 300)]
+        expected_df = self.spark.createDataFrame(expected_data, schema=["Index", "c1", "c2", "c3"])
+        assertDataFrameEqual(transposed_df, expected_df)
 
         # order_by
         transposed_df = F.transpose(
