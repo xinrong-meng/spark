@@ -506,6 +506,14 @@ class Dataset[T] private[sql] (
     }
   }
 
+  private def buildTranspose(indexColumnOption: Option[Column]): DataFrame =
+    sparkSession.newDataFrame { builder =>
+      val transpose = builder.getTransposeBuilder.setInput(plan.getRoot)
+      indexColumnOption.foreach { indexColumn =>
+        transpose.setIndexColumn(indexColumn.expr)
+      }
+    }
+
   /**
    * Groups the Dataset using the specified columns, so we can run aggregation on them. See
    * [[RelationalGroupedDataset]] for all the available aggregate functions.
@@ -814,6 +822,14 @@ class Dataset[T] private[sql] (
       valueColumnName: String): DataFrame = {
     buildUnpivot(ids, None, variableColumnName, valueColumnName)
   }
+
+  /** @inheritdoc */
+  def transpose(indexColumn: Column): DataFrame =
+    buildTranspose(Option(indexColumn))
+
+  /** @inheritdoc */
+  def transpose(): DataFrame =
+    buildTranspose(None)
 
   /** @inheritdoc */
   def limit(n: Int): Dataset[T] = sparkSession.newDataset(agnosticEncoder) { builder =>
