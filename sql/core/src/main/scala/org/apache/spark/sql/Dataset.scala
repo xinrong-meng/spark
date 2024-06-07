@@ -2173,6 +2173,17 @@ class Dataset[T] private[sql](
       valueColumnName: String): DataFrame =
     unpivot(ids.toArray, variableColumnName, valueColumnName)
 
+
+  def transpose(
+      firstColumnValues: Seq[Column],
+      valueType: DataType): DataFrame = withPlan {
+    Transpose(
+      firstColumnValues.map(_.expr),
+      valueType,
+      logicalPlan,
+    )
+  }
+
   /**
    * Unpivot a DataFrame from wide format to long format, optionally leaving identifier columns set.
    * This is the reverse to `groupBy(...).pivot(...).agg(...)`, except for the aggregation,
