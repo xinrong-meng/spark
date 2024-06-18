@@ -2180,7 +2180,7 @@ class Dataset[T] private[sql](
     Transpose(
       firstColumnValues.map(_.expr),
       valueType,
-      logicalPlan,
+      logicalPlan
     )
   }
 
