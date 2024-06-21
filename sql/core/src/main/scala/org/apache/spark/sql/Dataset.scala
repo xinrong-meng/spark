@@ -2183,10 +2183,14 @@ class Dataset[T] private[sql](
    */
   def transpose(): DataFrame = withPlan {
     val firstColumnValues = collectFirstColumnValues()
-    Transpose(
-      firstColumnValues.map(v => Literal(v.toString)),
-      logicalPlan
-    )
+    if (this.isEmpty) {
+      this.logicalPlan
+    } else {
+      Transpose(
+        firstColumnValues.map(v => Literal(v.toString)),
+        logicalPlan
+      )
+    }
   }
 
   private[sql] def collectFirstColumnValues(): Seq[Any] = {
