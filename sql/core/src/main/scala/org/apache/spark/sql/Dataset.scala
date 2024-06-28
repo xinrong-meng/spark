@@ -2174,6 +2174,45 @@ class Dataset[T] private[sql](
     unpivot(ids.toArray, variableColumnName, valueColumnName)
 
   /**
+   * Transpose a DataFrame, switching rows to columns.
+   * This function transforms the DataFrame such that the distinct values in the specified index
+   * column become the new columns of the DataFrame. If no index column is provided, the first
+   * column is used as the default. Note that values transposed must share the least common type.
+   *
+   * @param indexColumn The column to use as the index for transposing. If not provided, the first
+   * column is used.
+   * @group untypedrel
+   * @since 4.0.0
+   */
+  def transpose(indexColumn: Option[Column] = None): DataFrame = withPlan {
+    val actualIndexColumn = indexColumn.getOrElse(col(this.columns.head))
+    val indexColumnValues = collectIndexColumnValues(actualIndexColumn)
+    if (this.isEmpty) {
+      this.logicalPlan
+    } else {
+      Transpose(
+        actualIndexColumn.named,
+        indexColumnValues.map(v => Literal(v.toString)),
+        logicalPlan
+      )
+    }
+  }
+
+  private[sql] def collectIndexColumnValues(indexColumn: Column): Seq[Any] = {
+    // TODO: configurable maxValues
+    val maxValues = 5000
+    val values = this.select(indexColumn)
+      .distinct()
+      .limit(maxValues + 1)
+      .sort(indexColumn)
+      .collect()
+      .map(_.get(0))
+      .toImmutableArraySeq
+
+    values
+  }
+
+  /**
    * Unpivot a DataFrame from wide format to long format, optionally leaving identifier columns set.
    * This is the reverse to `groupBy(...).pivot(...).agg(...)`, except for the aggregation,
    * which cannot be reversed. This is an alias for `unpivot`.

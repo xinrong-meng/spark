@@ -294,6 +294,7 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
       ResolveGroupingAnalytics ::
       ResolvePivot ::
       ResolveUnpivot ::
+      ResolveTranspose ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ExtractGenerator ::
       ResolveGenerate ::
@@ -3916,6 +3917,40 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
         c.markAsAnalyzed(AnalysisContext.get)
       case c: KeepAnalyzedQuery if c.resolved =>
         c.storeAnalyzedQuery()
+    }
+  }
+
+  object ResolveTranspose extends Rule[LogicalPlan] {
+    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsWithPruning(
+      _.containsPattern(TRANSPOSE), ruleId) {
+      // scalastyle:off println
+      case t @ Transpose(indexColumn, indexColumnValues, child) =>
+        val indexColumnNamedExpr = indexColumn.asInstanceOf[NamedExpression]
+
+        val unpivot = Unpivot(
+          ids = Some(Seq(indexColumnNamedExpr)),
+          values = None,
+          aliases = None,
+          variableColumnName = "key",
+          valueColumnNames = Seq("value"),
+          child = child
+        )
+
+        val keyExpr = UnresolvedAttribute("key")
+        val valueExpr = UnresolvedAttribute("value")
+
+        val aggExpression = First(
+          valueExpr, ignoreNulls = true).toAggregateExpression(isDistinct = true)
+
+        val pivot = Pivot(
+          groupByExprsOpt = Some(Seq(keyExpr)),
+          pivotColumn = indexColumnNamedExpr,
+          pivotValues = indexColumnValues,
+          aggregates = Seq(aggExpression),
+          child = unpivot
+        )
+
+        pivot
     }
   }
 }
