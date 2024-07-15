@@ -985,6 +985,8 @@ abstract class SparkStrategies extends QueryPlanner[SparkPlan] {
         execution.RDDScanExec(Nil, singleRowRdd, "OneRowRelation") :: Nil
       case r: logical.Range =>
         execution.RangeExec(r) :: Nil
+      case t: logical.Transpose =>
+        execution.TransposeExec(planLater(t.child)) :: Nil
       case r: logical.RepartitionByExpression =>
         val shuffleOrigin = if (r.partitionExpressions.isEmpty && r.optNumPartitions.isEmpty) {
           REBALANCE_PARTITIONS_BY_NONE
