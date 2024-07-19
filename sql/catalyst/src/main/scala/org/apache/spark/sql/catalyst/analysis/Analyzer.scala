@@ -294,7 +294,6 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
       ResolveGroupingAnalytics ::
       ResolvePivot ::
       ResolveUnpivot ::
-      ResolveTranspose ::
       ResolveOrdinalInOrderByAndGroupBy ::
       ExtractGenerator ::
       ResolveGenerate ::
@@ -3917,14 +3916,6 @@ class Analyzer(override val catalogManager: CatalogManager) extends RuleExecutor
         c.markAsAnalyzed(AnalysisContext.get)
       case c: KeepAnalyzedQuery if c.resolved =>
         c.storeAnalyzedQuery()
-    }
-  }
-
-  object ResolveTranspose extends Rule[LogicalPlan] {
-    def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsWithPruning(
-      _.containsPattern(TRANSPOSE), ruleId) {
-      case t @ Transpose(indexColumn, indexColumnValues, child) if !t.resolved && child.resolved =>
-        t
     }
   }
 }
