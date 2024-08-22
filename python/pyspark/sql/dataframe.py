@@ -6323,6 +6323,66 @@ class DataFrame:
         """
         ...
 
+    @dispatch_df_method
+    def transpose(self, indexColumn: Optional[Column] = None) -> "DataFrame":
+        """
+        DataFrame such that the values in the specified index column become the new columns
+        of the DataFrame. If no index column is provided, the first column is used as the default.
+
+        All columns except the index column must share a least common data type. Unless they
+        are the same data type, all columns are cast to the nearest common data type. For instance,
+        types `IntegerType` and `LongType` are cast to `LongType`, while `IntegerType` and
+        `StringType` do not have a common data type, and `transpose` fails.
+
+        .. versionadded:: 4.0.0
+
+        Parameters
+        ----------
+        indexColumn : str, Column, optional
+            The column to be used as the index for the transpose operation. If not provided,
+            the first column of the DataFrame will be used as the default.
+
+        Returns
+        -------
+        :class:`DataFrame`
+            Transposed DataFrame.
+
+        Notes
+        -----
+        Supports Spark Connect.
+
+        Examples
+        --------
+        >>> df = spark.createDataFrame(
+        ...     [("A", 1, 2), ("B", 3, 4)],
+        ...     ["id", "val1", "val2"],
+        ... )
+        >>> df.show()
+        +---+----+----+
+        | id|val1|val2|
+        +---+----+----+
+        |  A|   1|   2|
+        |  B|   3|   4|
+        +---+----+----+
+
+        >>> df.transpose().show()
+        +----+---+---+
+        | key|  A|  B|
+        +----+---+---+
+        |val1|  1|  3|
+        |val2|  2|  4|
+        +----+---+---+
+
+        >>> df.transpose("id").show()
+        +----+---+---+
+        | key|  A|  B|
+        +----+---+---+
+        |val1|  1|  3|
+        |val2|  2|  4|
+        +----+---+---+
+        """
+        ...
+
     @property
     def executionInfo(self) -> Optional["ExecutionInfo"]:
         """

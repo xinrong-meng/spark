@@ -957,18 +957,6 @@ class DataFrameTestsMixin:
             self.spark.range(1).localCheckpoint().explain()
             self.assertIn("ExistingRDD", buf.getvalue())
 
-
-class DataFrameTests(DataFrameTestsMixin, ReusedSQLTestCase):
-    def test_query_execution_unsupported_in_classic(self):
-        with self.assertRaises(PySparkValueError) as pe:
-            self.spark.range(1).executionInfo
-
-        self.check_error(
-            exception=pe.exception,
-            errorClass="CLASSIC_OPERATION_NOT_SUPPORTED_ON_DF",
-            messageParameters={"member": "queryExecution"},
-        )
-
     def test_transpose(self):
         df = self.spark.createDataFrame([{"a": "x", "b": "y", "c": "z"}])
 
@@ -989,6 +977,18 @@ class DataFrameTests(DataFrameTestsMixin, ReusedSQLTestCase):
         expected_data = [Row(key="a", z="x"), Row(key="b", z="y")]
         self.assertEqual(transposed_df.schema, expected_schema)
         self.assertEqual(transposed_df.collect(), expected_data)
+
+
+class DataFrameTests(DataFrameTestsMixin, ReusedSQLTestCase):
+    def test_query_execution_unsupported_in_classic(self):
+        with self.assertRaises(PySparkValueError) as pe:
+            self.spark.range(1).executionInfo
+
+        self.check_error(
+            exception=pe.exception,
+            errorClass="CLASSIC_OPERATION_NOT_SUPPORTED_ON_DF",
+            messageParameters={"member": "queryExecution"},
+        )
 
 
 if __name__ == "__main__":
