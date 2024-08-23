@@ -2185,6 +2185,46 @@ class Dataset[T] private[sql](
    * - The name of the column into which the original column names are transposed defaults to "key".
    * - Non-"key" column names for the transposed table are ordered in ascending order.
    *
+   * {{{
+   *   val df = Seq(("A", 1, 2), ("B", 3, 4)).toDF("id", "val1", "val2")
+   *   df.show()
+   *   // output:
+   *   // +---+----+----+
+   *   // | id|val1|val2|
+   *   // +---+----+----+
+   *   // |  A|   1|   2|
+   *   // |  B|   3|   4|
+   *   // +---+----+----+
+   *
+   *   df.transpose($"id").show()
+   *   // output:
+   *   // +----+---+---+
+   *   // | key|  A|  B|
+   *   // +----+---+---+
+   *   // |val1|  1|  3|
+   *   // |val2|  2|  4|
+   *   // +----+---+---+
+   *   // schema:
+   *   // root
+   *   //  |-- key: string (nullable = false)
+   *   //  |-- A: integer (nullable = true)
+   *   //  |-- B: integer (nullable = true)
+   *
+   *   df.transpose().show()
+   *   // output:
+   *   // +----+---+---+
+   *   // | key|  A|  B|
+   *   // +----+---+---+
+   *   // |val1|  1|  3|
+   *   // |val2|  2|  4|
+   *   // +----+---+---+
+   *   // schema:
+   *   // root
+   *   //  |-- key: string (nullable = false)
+   *   //  |-- A: integer (nullable = true)
+   *   //  |-- B: integer (nullable = true)
+   * }}}
+   *
    * @param indexColumn The single column that will be treated as the index for the transpose
    * operation.This column will be used to pivot the data, transforming the DataFrame such that
    * the values of the indexColumn become the new columns in the transposed DataFrame.
