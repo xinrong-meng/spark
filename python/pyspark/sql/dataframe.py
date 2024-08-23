@@ -6373,7 +6373,7 @@ class DataFrame:
         |val2|  2|  4|
         +----+---+---+
 
-        >>> df.transpose("id").show()
+        >>> df.transpose(df.id).show()
         +----+---+---+
         | key|  A|  B|
         +----+---+---+
