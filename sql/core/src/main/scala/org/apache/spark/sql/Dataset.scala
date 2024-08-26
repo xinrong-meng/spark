@@ -2176,14 +2176,16 @@ class Dataset[T] private[sql](
     unpivot(ids.toArray, variableColumnName, valueColumnName)
 
   /**
-   * Transpose a DataFrame, switching rows to columns.
-   * This function transforms the DataFrame such that the values in the specified index
-   * column become the new columns of the DataFrame.
+   * Transpose a DataFrame such that the values in the specified index column become the new
+   * columns of the DataFrame. If no index column is provided, the first column is used as
+   * the default.
    *
    * Please note:
-   * - The values transposed must share the least common type.
-   * - The name of the column into which the original column names are transposed defaults to "key".
-   * - Non-"key" column names for the transposed table are ordered in ascending order.
+   *   - All columns except the index column must share a least common data type. Unless they
+   *     are the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults
+   *     to "key".
+   *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * {{{
    *   val df = Seq(("A", 1, 2), ("B", 3, 4)).toDF("id", "val1", "val2")
@@ -2225,10 +2227,10 @@ class Dataset[T] private[sql](
    *   //  |-- B: integer (nullable = true)
    * }}}
    *
-   * @param indexColumn The single column that will be treated as the index for the transpose
-   * operation.This column will be used to pivot the data, transforming the DataFrame such that
-   * the values of the indexColumn become the new columns in the transposed DataFrame.
-   *
+   * @param indexColumn
+   *   The single column that will be treated as the index for the transpose operation.This column
+   *   will be used to pivot the data, transforming the DataFrame such that the values of the
+   *   indexColumn become the new columns in the transposed DataFrame.
    * @group untypedrel
    * @since 4.0.0
    */
@@ -2252,10 +2254,11 @@ class Dataset[T] private[sql](
    * where `indexColumn` is set to the first column.
    *
    * Please note:
-   * - The values transposed must share the least common type.
-   * - The name of the column into which the original column names are transposed defaults to "key".
-   * - Non-"key" column names for the transposed table are ordered in ascending order.
-   *
+   *   - All columns except the index column must share a least common data type. Unless they
+   *     are the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults
+   *     to "key".
+   *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * @group untypedrel
    * @since 4.0.0

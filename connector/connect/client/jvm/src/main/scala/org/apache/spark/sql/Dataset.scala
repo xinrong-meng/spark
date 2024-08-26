@@ -1789,13 +1789,14 @@ class Dataset[T] private[sql] (
     unpivot(ids, variableColumnName, valueColumnName)
 
   /**
-   * Transpose a DataFrame, switching rows to columns. This function transforms the DataFrame such
-   * that the values in the specified index column become the new columns of the DataFrame.
+   * Transpose a DataFrame such that the values in the specified index column become the new
+   * columns of the DataFrame.
    *
    * Please note:
-   *   - The values transposed must share the least common type.
-   *   - The name of the column into which the original column names are transposed defaults to
-   *     "key".
+   *   - All columns except the index column must share a least common data type. Unless they
+   *     are the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults
+   *     to "key".
    *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * {{{
@@ -1857,9 +1858,10 @@ class Dataset[T] private[sql] (
    * first column.
    *
    * Please note:
-   *   - The values transposed must share the least common type.
-   *   - The name of the column into which the original column names are transposed defaults to
-   *     "key".
+   *   - All columns except the index column must share a least common data type. Unless they
+   *     are the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults
+   *     to "key".
    *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * @group untypedrel
