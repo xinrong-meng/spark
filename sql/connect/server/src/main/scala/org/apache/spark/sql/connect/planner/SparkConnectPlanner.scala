@@ -1136,10 +1136,7 @@ class SparkConnectPlanner(
       child.output.head
     }
 
-    UnresolvedTranspose(
-      indexColumn = indexColumn,
-      child = child
-    )
+    UnresolvedTranspose(indexColumn = indexColumn, child = child)
   }
 
   private def transformUnpivot(rel: proto.Unpivot): LogicalPlan = {
