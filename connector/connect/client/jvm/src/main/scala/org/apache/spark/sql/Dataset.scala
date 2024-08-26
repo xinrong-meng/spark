@@ -1793,10 +1793,10 @@ class Dataset[T] private[sql] (
    * columns of the DataFrame.
    *
    * Please note:
-   *   - All columns except the index column must share a least common data type. Unless they
-   *     are the same data type, all columns are cast to the nearest common data type.
-   *   - The name of the column into which the original column names are transposed defaults
-   *     to "key".
+   *   - All columns except the index column must share a least common data type. Unless they are
+   *     the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults to
+   *     "key".
    *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * {{{
@@ -1858,10 +1858,10 @@ class Dataset[T] private[sql] (
    * first column.
    *
    * Please note:
-   *   - All columns except the index column must share a least common data type. Unless they
-   *     are the same data type, all columns are cast to the nearest common data type.
-   *   - The name of the column into which the original column names are transposed defaults
-   *     to "key".
+   *   - All columns except the index column must share a least common data type. Unless they are
+   *     the same data type, all columns are cast to the nearest common data type.
+   *   - The name of the column into which the original column names are transposed defaults to
+   *     "key".
    *   - Non-"key" column names for the transposed table are ordered in ascending order.
    *
    * @group untypedrel
