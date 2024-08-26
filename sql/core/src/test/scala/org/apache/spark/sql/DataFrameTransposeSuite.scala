@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql
 
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types._
 
@@ -84,6 +85,15 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
       complexData.transpose($"s.key")
     }
     assert(exceptionAttribute.getMessage.contains("Index column must be an atomic attribute"))
+  }
+
+  test("enforce transpose max values") {
+    spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key, 1)
+    intercept[IllegalArgumentException](
+      person.transpose($"name")
+    )
+    spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key,
+      SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.defaultValue.get)
   }
 
   //

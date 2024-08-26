@@ -128,6 +128,13 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
 
         LocalRelation(Seq(keyAttr), keyRows)
       } else {
+        val maxValues = sparkSession.sessionState.conf.dataFrameTransposeMaxValues
+        if (fullCollectedRows.length > maxValues) {
+          throw new IllegalArgumentException(
+            s"Transposing the DataFrame exceeds the maximum allowed number of " +
+            s"values: $maxValues. Actual number of values: ${fullCollectedRows.length}."
+          )
+        }
 
         // Transpose the matrix
         val nonIndexColumnNames = nonIndexColumnsAttr.map(_.name)
