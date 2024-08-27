@@ -75,23 +75,26 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
   }
 
   test("enforce AtomicType Attribute for index column values") {
-    val exceptionAtomic = intercept[IllegalArgumentException] {
+    val exceptionAtomic = intercept[AnalysisException] {
       complexData.transpose($"m")  // (m,MapType(StringType,IntegerType,false))
     }
-    assert(exceptionAtomic.getMessage.contains("Index column must be of atomic type, but found"))
+    assert(exceptionAtomic.getMessage.contains(
+      "Invalid index column because: Index column must be of atomic type, but found"))
 
-    val exceptionAttribute = intercept[IllegalArgumentException] {
+    val exceptionAttribute = intercept[AnalysisException] {
       // (s,StructType(StructField(key,IntegerType,false),StructField(value,StringType,true)))
       complexData.transpose($"s.key")
     }
-    assert(exceptionAttribute.getMessage.contains("Index column must be an atomic attribute"))
+    assert(exceptionAttribute.getMessage.contains(
+      "Invalid index column because: Index column must be an atomic attribute"))
   }
 
   test("enforce transpose max values") {
     spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key, 1)
-    intercept[AnalysisException](
+    val exception = intercept[AnalysisException](
       person.transpose($"name")
     )
+    assert(exception.getMessage.contains("exceeds the allowed limit of"))
     spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key,
       SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.defaultValue.get)
   }

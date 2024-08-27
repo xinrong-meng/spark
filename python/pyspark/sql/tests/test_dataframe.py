@@ -1004,7 +1004,7 @@ class DataFrameTestsMixin:
         # enforce AtomicType Attribute for index column values
         df = self.spark.createDataFrame([{"a": ["x", "x"], "b": "y", "c": "z"}])
         with self.assertRaisesRegex(
-            IllegalArgumentException, "Index column must be of atomic type"
+            AnalysisException, "Invalid index column because: Index column must be of atomic type"
         ):
             df.transpose().collect()
 

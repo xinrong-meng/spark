@@ -94,11 +94,17 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
         case attr: Attribute if attr.dataType.isInstanceOf[AtomicType] =>
           Alias(Cast(attr, StringType), attr.name)()
         case attr: Attribute =>
-          throw new IllegalArgumentException(
-            s"Index column must be of atomic type, but found: ${attr.dataType}")
+          throw new AnalysisException(
+            errorClass = "INVALID_INDEX_COLUMN",
+            messageParameters = Map(
+              "reason" -> s"Index column must be of atomic type, but found: ${attr.dataType}")
+          )
         case _ =>
-          throw new IllegalArgumentException(
-            s"Index column must be an atomic attribute")
+          throw new AnalysisException(
+            errorClass = "INVALID_INDEX_COLUMN",
+            messageParameters = Map(
+              "reason" -> s"Index column must be an atomic attribute")
+          )
       }
 
       // Cast non-index columns to the least common type
