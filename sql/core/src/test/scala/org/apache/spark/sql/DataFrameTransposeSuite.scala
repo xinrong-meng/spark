@@ -89,7 +89,7 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
 
   test("enforce transpose max values") {
     spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key, 1)
-    intercept[IllegalArgumentException](
+    intercept[AnalysisException](
       person.transpose($"name")
     )
     spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key,

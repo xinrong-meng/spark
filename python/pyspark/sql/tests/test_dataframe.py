@@ -981,8 +981,10 @@ class DataFrameTestsMixin:
         # enforce transpose max values
         with self.sql_conf({"spark.sql.transposeMaxValues": 0}):
             with self.assertRaisesRegex(
-                IllegalArgumentException,
-                "Transposing the DataFrame exceeds the maximum allowed number of values",
+                AnalysisException,
+                rf"\[EXCEED_ROW_LIMIT\] Number of rows {df.count()} exceeds the allowed limit"
+                r" of 0\. If this was intended, set spark\.sql\.transposeMaxValues to at least"
+                r" the current row count\. SQLSTATE: 54006",
             ):
                 df.transpose().collect()
 

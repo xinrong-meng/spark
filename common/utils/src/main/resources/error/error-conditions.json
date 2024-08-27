@@ -1198,6 +1198,12 @@
     ],
     "sqlState" : "54006"
   },
+  "EXCEED_ROW_LIMIT" : {
+    "message" : [
+      "Number of rows <rowCount> exceeds the allowed limit of <maxValues>. If this was intended, set <config> to at least the current row count."
+    ],
+    "sqlState" : "54006"
+  },
   "EXCEPT_NESTED_COLUMN_INVALID_TYPE" : {
     "message" : [
       "EXCEPT column <columnName> was resolved and expected to be StructType, but found type <dataType>."
