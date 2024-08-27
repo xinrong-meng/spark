@@ -37,7 +37,12 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
     } else {
       dataTypes.reduce { (dt1, dt2) =>
         TypeCoercion.findTightestCommonType(dt1, dt2).getOrElse {
-          throw new IllegalArgumentException(s"No common type found for $dt1 and $dt2")
+          throw new AnalysisException(
+            errorClass = "TRANSPOSE_NO_LEAST_COMMON_TYPE",
+            messageParameters = Map(
+              "dt1" -> dt1.toString,
+              "dt2" -> dt2.toString)
+          )
         }
       }
     }
@@ -144,7 +149,6 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
           throw new AnalysisException(
             errorClass = "EXCEED_ROW_LIMIT",
             messageParameters = Map(
-              "rowCount" -> rowCount.toString,
               "maxValues" -> maxValues.toString,
               "config" -> SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key))
         }

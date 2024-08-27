@@ -1200,7 +1200,7 @@
   },
   "EXCEED_ROW_LIMIT" : {
     "message" : [
-      "Number of rows <rowCount> exceeds the allowed limit of <maxValues>. If this was intended, set <config> to at least the current row count."
+      "Number of rows exceeds the allowed limit of <maxValues>. If this was intended, set <config> to at least the current row count."
     ],
     "sqlState" : "54006"
   },
@@ -4290,6 +4290,12 @@
       "CREATE TEMPORARY VIEW or the corresponding Dataset APIs only accept single-part view names, but got: <actualName>."
     ],
     "sqlState" : "428EK"
+  },
+  "TRANSPOSE_NO_LEAST_COMMON_TYPE" : {
+    "message" : [
+      "Transpose requires non-index columns to share a least common type, but <dt1> and <dt2> do not."
+    ],
+    "sqlState" : "42K09"
   },
   "UDTF_ALIAS_NUMBER_MISMATCH" : {
     "message" : [

@@ -58,10 +58,12 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
     assertResult(DoubleType)(transposedDf.schema("x").dataType)
     assertResult(DoubleType)(transposedDf.schema("y").dataType)
 
-    val exception = intercept[IllegalArgumentException] {
+    val exception = intercept[AnalysisException] {
       person.transpose()
     }
-    assert(exception.getMessage.contains("No common type found"))
+    assert(exception.getMessage.contains(
+      "[TRANSPOSE_NO_LEAST_COMMON_TYPE] Transpose requires non-index columns " +
+        "to share a least common type"))
   }
 
   test("enforce ascending order based on index column values for transposed columns") {
@@ -79,14 +81,16 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
       complexData.transpose($"m")  // (m,MapType(StringType,IntegerType,false))
     }
     assert(exceptionAtomic.getMessage.contains(
-      "Invalid index column because: Index column must be of atomic type, but found"))
+      "[INVALID_INDEX_COLUMN] Invalid index column because: Index column must be" +
+        " of atomic type, but found"))
 
     val exceptionAttribute = intercept[AnalysisException] {
       // (s,StructType(StructField(key,IntegerType,false),StructField(value,StringType,true)))
       complexData.transpose($"s.key")
     }
     assert(exceptionAttribute.getMessage.contains(
-      "Invalid index column because: Index column must be an atomic attribute"))
+      "[INVALID_INDEX_COLUMN] Invalid index column because: Index column must be" +
+        " an atomic attribute"))
   }
 
   test("enforce transpose max values") {
@@ -94,7 +98,8 @@ class DataFrameTransposeSuite extends QueryTest with SharedSparkSession {
     val exception = intercept[AnalysisException](
       person.transpose($"name")
     )
-    assert(exception.getMessage.contains("exceeds the allowed limit of"))
+    assert(exception.getMessage.contains(
+      "[EXCEED_ROW_LIMIT] Number of rows exceeds the allowed limit of"))
     spark.conf.set(SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.key,
       SQLConf.DATAFRAME_TRANSPOSE_MAX_VALUES.defaultValue.get)
   }
