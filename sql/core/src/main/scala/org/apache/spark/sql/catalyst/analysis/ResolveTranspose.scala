@@ -19,8 +19,8 @@ package org.apache.spark.sql.catalyst.analysis
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Alias, Ascending, Attribute, AttributeReference, Cast, SortOrder}
-import org.apache.spark.sql.catalyst.plans.logical.{LocalRelation, LogicalPlan, Project, Sort, Transpose}
+import org.apache.spark.sql.catalyst.expressions.{Alias, Ascending, Attribute, AttributeReference, Cast, Literal, SortOrder}
+import org.apache.spark.sql.catalyst.plans.logical.{Limit, LocalRelation, LogicalPlan, Project, Sort, Transpose}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.trees.TreePattern
 import org.apache.spark.sql.types.{AtomicType, DataType, StringType}
@@ -116,7 +116,10 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
         child
       )
       val projectAllCastCols = Project(allCastCols, sortedChild)
-      val queryExecution = sparkSession.sessionState.executePlan(projectAllCastCols)
+      val maxValues = sparkSession.sessionState.conf.dataFrameTransposeMaxValues
+      val limit = Literal(maxValues + 1)
+      val limitedProject = Limit(limit, projectAllCastCols)
+      val queryExecution = sparkSession.sessionState.executePlan(limitedProject)
       val fullCollectedRows = queryExecution.executedPlan.executeCollect()
 
       if (fullCollectedRows.isEmpty) {
@@ -128,7 +131,6 @@ class ResolveTranspose(sparkSession: SparkSession) extends Rule[LogicalPlan] {
 
         LocalRelation(Seq(keyAttr), keyRows)
       } else {
-        val maxValues = sparkSession.sessionState.conf.dataFrameTransposeMaxValues
         if (fullCollectedRows.length > maxValues) {
           throw new IllegalArgumentException(
             s"Transposing the DataFrame exceeds the maximum allowed number of " +
