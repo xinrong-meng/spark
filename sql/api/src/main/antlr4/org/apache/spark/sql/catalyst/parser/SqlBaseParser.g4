@@ -840,6 +840,7 @@ setQuantifier
 
 relation
     : LATERAL? relationPrimary relationExtension*
+    | relationPrimary TRANSPOSE (USING multipartIdentifier)?
     ;
 
 relationExtension
@@ -1730,6 +1731,7 @@ ansiNonReserved
     | TOUCH
     | TRANSACTION
     | TRANSACTIONS
+    | TRANSPOSE
     | TRANSFORM
     | TRIM
     | TRUE
@@ -2103,6 +2105,7 @@ nonReserved
     | TRAILING
     | TRANSACTION
     | TRANSACTIONS
+    | TRANSPOSE
     | TRANSFORM
     | TRIM
     | TRUE
