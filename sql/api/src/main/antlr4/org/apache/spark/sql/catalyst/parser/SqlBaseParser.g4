@@ -840,7 +840,6 @@ setQuantifier
 
 relation
     : LATERAL? relationPrimary relationExtension*
-    | relationPrimary TRANSPOSE (USING multipartIdentifier)?
     ;
 
 relationExtension
@@ -1015,6 +1014,13 @@ partitionField
     | colType    #partitionColumn
     ;
 
+transposeTable
+    : tableIdentifier TRANSPOSE (USING indexColumn)?
+    ;
+
+indexColumn
+    : multipartIdentifier
+    ;
 transform
     : qualifiedName                                                                             #identityTransform
     | transformName=identifier

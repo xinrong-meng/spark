@@ -810,6 +810,22 @@ class SparkSqlParserSuite extends AnalysisTest with SharedSparkSession {
     parser.parsePlan("SELECT\f1") // ASCII form feed
   }
 
+  test("TRANSPOSE") {
+    val sqlCommand = "SELECT * FROM my_table TRANSPOSE USING my_index_column"
+    val expectedPlanWithUsing = UnresolvedTranspose(
+      Seq(UnresolvedAttribute("my_index_column")),  // index column
+      UnresolvedRelation(Seq("my_table"))  // child (the table)
+    )
+    assertEqual(sqlCommandWithUsing, expectedPlanWithUsing)
+
+    val sqlCommandWithoutUsing = "SELECT * FROM my_table TRANSPOSE"
+    val expectedPlanWithoutUsing = UnresolvedTranspose(
+      Seq(),  // No index column provided
+      UnresolvedRelation(Seq("my_table"))  // child (the table)
+    )
+    assertEqual(sqlCommandWithoutUsing, expectedPlanWithoutUsing)
+  }
+
   // Need to switch off scala style for Unicode characters
   // scalastyle:off
   test("verify whitespace handling - Unicode no-break space") {
