@@ -1021,6 +1021,7 @@ transposeTable
 indexColumn
     : multipartIdentifier
     ;
+
 transform
     : qualifiedName                                                                             #identityTransform
     | transformName=identifier
