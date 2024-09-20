@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters._
 import org.apache.spark.SparkThrowable
 import org.apache.spark.internal.config.ConfigEntry
 import org.apache.spark.sql.catalyst.{FunctionIdentifier, TableIdentifier}
-import org.apache.spark.sql.catalyst.analysis.{AnalysisTest, UnresolvedAlias, UnresolvedAttribute, UnresolvedFunction, UnresolvedGenerator, UnresolvedHaving, UnresolvedRelation, UnresolvedStar}
+import org.apache.spark.sql.catalyst.analysis.{AnalysisTest, UnresolvedAlias, UnresolvedAttribute, UnresolvedFunction, UnresolvedGenerator, UnresolvedHaving, UnresolvedRelation, UnresolvedStar, UnresolvedTranspose}
 import org.apache.spark.sql.catalyst.expressions.{Ascending, AttributeReference, Concat, GreaterThan, Literal, NullsFirst, SortOrder, UnresolvedWindowExpression, UnspecifiedFrame, WindowSpecDefinition, WindowSpecReference}
 import org.apache.spark.sql.catalyst.parser.ParseException
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -811,17 +811,17 @@ class SparkSqlParserSuite extends AnalysisTest with SharedSparkSession {
   }
 
   test("TRANSPOSE") {
-    val sqlCommand = "SELECT * FROM my_table TRANSPOSE USING my_index_column"
+    val sqlCommandWithUsing = "SELECT * FROM t TRANSPOSE USING my_index_column"
     val expectedPlanWithUsing = UnresolvedTranspose(
       Seq(UnresolvedAttribute("my_index_column")),  // index column
-      UnresolvedRelation(Seq("my_table"))  // child (the table)
+      UnresolvedRelation(Seq("t"))  // child (the table)
     )
     assertEqual(sqlCommandWithUsing, expectedPlanWithUsing)
 
-    val sqlCommandWithoutUsing = "SELECT * FROM my_table TRANSPOSE"
+    val sqlCommandWithoutUsing = "SELECT * FROM t TRANSPOSE"
     val expectedPlanWithoutUsing = UnresolvedTranspose(
       Seq(),  // No index column provided
-      UnresolvedRelation(Seq("my_table"))  // child (the table)
+      UnresolvedRelation(Seq("t"))  // child (the table)
     )
     assertEqual(sqlCommandWithoutUsing, expectedPlanWithoutUsing)
   }

@@ -1628,11 +1628,17 @@ class AstBuilder extends DataTypeAstBuilder
   }
 
   override def visitTranspose(ctx: TransposeContext): LogicalPlan = withOrigin(ctx) {
-    val table = visit(ctx.tableIdentifier)
+//    val table = plan(ctx.relationPrimary)
+
+    val table = if (ctx.relationPrimary != null) {
+      plan(ctx.relationPrimary).asInstanceOf[LogicalPlan]  // Ensure it's a LogicalPlan
+    } else {
+      throw new IllegalArgumentException("Missing relationPrimary in TRANSPOSE clause")
+    }
     val indices: Seq[Expression] = if (ctx.indexColumn != null) {
       visitIndexColumn(ctx.indexColumn)
     } else {
-      Seq()
+      Seq.empty
     }
 
     UnresolvedTranspose(indices, table)
