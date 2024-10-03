@@ -742,8 +742,11 @@ hintStatement
     | hintName=identifier LEFT_PAREN parameters+=primaryExpression (COMMA parameters+=primaryExpression)* RIGHT_PAREN
     ;
 
+//fromClause
+//    : FROM relation (COMMA relation)* lateralView* pivotClause? unpivotClause?
+//    ;
 fromClause
-    : FROM relation (COMMA relation)* lateralView* pivotClause? unpivotClause?
+    : FROM (relation | transpose) (COMMA (relation | transpose))* lateralView* pivotClause? unpivotClause?
     ;
 
 temporalClause
@@ -850,6 +853,9 @@ setQuantifier
     | ALL
     ;
 
+//relation
+//    : LATERAL? (relationPrimary | transpose) relationExtension*
+//    ;
 relation
     : LATERAL? relationPrimary relationExtension*
     ;
@@ -1024,6 +1030,14 @@ partitionFieldList
 partitionField
     : transform  #partitionTransform
     | colType    #partitionColumn
+    ;
+
+transpose
+    : relationPrimary TRANSPOSE (USING indexColumn)?
+    ;
+
+indexColumn
+    : multipartIdentifier
     ;
 
 transform
@@ -1764,6 +1778,7 @@ ansiNonReserved
     | TOUCH
     | TRANSACTION
     | TRANSACTIONS
+    | TRANSPOSE
     | TRANSFORM
     | TRIM
     | TRUE
@@ -2139,6 +2154,7 @@ nonReserved
     | TRAILING
     | TRANSACTION
     | TRANSACTIONS
+    | TRANSPOSE
     | TRANSFORM
     | TRIM
     | TRUE

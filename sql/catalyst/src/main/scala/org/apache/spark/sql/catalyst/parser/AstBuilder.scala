@@ -1692,6 +1692,27 @@ class AstBuilder extends DataTypeAstBuilder
       query)
   }
 
+  override def visitTranspose(ctx: TransposeContext): LogicalPlan = withOrigin(ctx) {
+//    val table = plan(ctx.relationPrimary)
+
+    val table = if (ctx.relationPrimary != null) {
+      plan(ctx.relationPrimary).asInstanceOf[LogicalPlan]  // Ensure it's a LogicalPlan
+    } else {
+      throw new IllegalArgumentException("Missing relationPrimary in TRANSPOSE clause")
+    }
+    val indices: Seq[Expression] = if (ctx.indexColumn != null) {
+      visitIndexColumn(ctx.indexColumn)
+    } else {
+      Seq.empty
+    }
+
+    UnresolvedTranspose(indices, table)
+  }
+
+  override def visitIndexColumn(ctx: IndexColumnContext): Seq[UnresolvedAttribute] = {
+    Seq(UnresolvedAttribute(visitMultipartIdentifier(ctx.multipartIdentifier)))
+  }
+
   /**
    * Create a single relation referenced in a FROM clause. This method is used when a part of the
    * join condition is nested, for example:
