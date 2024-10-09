@@ -32,6 +32,8 @@ def plot_pyspark(data: "DataFrame", kind: str, **kwargs: Any) -> "Figure":
         return plot_pie(data, **kwargs)
     if kind == "box":
         return plot_box(data, **kwargs)
+    if kind == "hist":
+        return plot_histogram(data, **kwargs)
 
     return plotly.plot(PySparkPlotAccessor.plot_data_map[kind](data), kind, **kwargs)
 
@@ -118,3 +120,11 @@ def plot_box(data: "DataFrame", **kwargs: Any) -> "Figure":
 
     fig["layout"]["yaxis"]["title"] = "value"
     return fig
+
+def plot_histogram(data: "DataFrame", **kwargs: Any) -> "Figure":
+    import plotly.graph_objs as go
+
+    bins = kwargs.get("bins", 10)
+    y = kwargs.get("y")
+    y_min, y_max = data.agg(F.min(y), F.max(y)).first()
+    bin_width = (y_max - y_min) / bins
