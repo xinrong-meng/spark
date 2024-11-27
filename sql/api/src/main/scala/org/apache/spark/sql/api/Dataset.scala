@@ -1703,18 +1703,57 @@ abstract class Dataset[T] extends Serializable {
    * Converts the DataFrame into a `Column` object for use with table-valued functions (TVFs) or
    * user-defined table functions (UDTFs).
    *
-   * @param partitionBy Columns to partition by (default: empty).
-   * @param orderBy Columns to order by within partitions (default: empty).
-   * @param withSinglePartition Whether to force a single partition (default: false).
+   * @group typedrel
+   * @since 4.0.0
+   */
+  def argument(): Column
+
+  /**
+   * Converts the DataFrame into a `Column` object for use with table-valued functions (TVFs) or
+   * user-defined table functions (UDTFs).
+   *
+   * @param partitionBy Columns to partition by.
    *
    * @group typedrel
    * @since 4.0.0
    */
-  def argument(
-    partitionBy: Seq[Column] = Seq.empty,
-    orderBy: Seq[Column] = Seq.empty,
-    withSinglePartition: Boolean = false
-  ): Column
+  def argument(partitionBy: Seq[Column]): Column
+
+  /**
+   * Converts the DataFrame into a `Column` object for use with table-valued functions (TVFs) or
+   * user-defined table functions (UDTFs).
+   *
+   * @param partitionBy Columns to partition by.
+   * @param orderBy Columns to order by within partitions.
+   *
+   * @group typedrel
+   * @since 4.0.0
+   */
+  def argument(partitionBy: Seq[Column], orderBy: Seq[Column]): Column
+
+  /**
+   * Converts the DataFrame into a `Column` object for use with table-valued functions (TVFs) or
+   * user-defined table functions (UDTFs).
+   *
+   * @param withSinglePartition Whether to force a single partition.
+   *
+   * @group typedrel
+   * @since 4.0.0
+   */
+  def argument(withSinglePartition: Boolean): Column
+
+  /**
+   * Converts the DataFrame into a `Column` object for use with table-valued functions (TVFs) or
+   * user-defined table functions (UDTFs).
+   *
+   * @param withSinglePartition Whether to force a single partition.
+   * @param orderBy Columns to order by within partitions.
+   *
+   * @group typedrel
+   * @since 4.0.0
+   */
+  def argument(withSinglePartition: Boolean, orderBy: Seq[Column]): Column
+
 
   /**
    * Return a `Column` object for a SCALAR Subquery containing exactly one row and one column.

@@ -585,6 +585,31 @@ class Dataset[T] private[sql] (
   def transpose(): DataFrame =
     buildTranspose(Seq.empty)
 
+  /** @inheritdoc */
+  def argument(): Column = {
+    ???
+  }
+
+  /** @inheritdoc */
+  def argument(partitionBy: Seq[Column]): Column = {
+    ???
+  }
+
+  /** @inheritdoc */
+  def argument(partitionBy: Seq[Column], orderBy: Seq[Column]): Column = {
+    ???
+  }
+
+  /** @inheritdoc */
+  def argument(withSinglePartition: Boolean): Column = {
+    ???
+  }
+
+  /** @inheritdoc */
+  def argument(withSinglePartition: Boolean, orderBy: Seq[Column]): Column = {
+    ???
+  }
+
   // TODO(SPARK-50134): Support scalar Subquery API in Spark Connect
   // scalastyle:off not.implemented.error.usage
   /** @inheritdoc */

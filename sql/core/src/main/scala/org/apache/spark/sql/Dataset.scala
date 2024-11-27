@@ -1004,17 +1004,49 @@ class Dataset[T] private[sql](
   }
 
   /** @inheritdoc */
-  def argument(
-    partitionBy: Seq[Column] = Seq.empty,
-    orderBy: Seq[Column] = Seq.empty,
-    withSinglePartition: Boolean = false
-  ): Column = {
-    val partitionByExpressions: Seq[Expression] = partitionBy.map(_.expr)
-    val orderByExpressions: Seq[SortOrder] = orderBy.map(_.expr.asInstanceOf[SortOrder])
+  def argument(): Column = {
+    val tableExpr = FunctionTableSubqueryArgumentExpression(
+      plan = logicalPlan,
+    )
+    Column(tableExpr)
+  }
 
+  /** @inheritdoc */
+  def argument(partitionBy: Seq[Column]): Column = {
+    val partitionByExpressions: Seq[Expression] = partitionBy.map(_.expr)
     val tableExpr = FunctionTableSubqueryArgumentExpression(
       plan = logicalPlan,
       partitionByExpressions = partitionByExpressions,
+    )
+    Column(tableExpr)
+  }
+
+  /** @inheritdoc */
+  def argument(partitionBy: Seq[Column], orderBy: Seq[Column]): Column = {
+    val partitionByExpressions: Seq[Expression] = partitionBy.map(_.expr)
+    val orderByExpressions: Seq[SortOrder] = orderBy.map(_.expr.asInstanceOf[SortOrder])
+    val tableExpr = FunctionTableSubqueryArgumentExpression(
+      plan = logicalPlan,
+      partitionByExpressions = partitionByExpressions,
+      orderByExpressions = orderByExpressions
+    )
+    Column(tableExpr)
+  }
+
+  /** @inheritdoc */
+  def argument(withSinglePartition: Boolean): Column = {
+    val tableExpr = FunctionTableSubqueryArgumentExpression(
+      plan = logicalPlan,
+      withSinglePartition = withSinglePartition,
+    )
+    Column(tableExpr)
+  }
+
+  /** @inheritdoc */
+  def argument(withSinglePartition: Boolean, orderBy: Seq[Column]): Column = {
+    val orderByExpressions: Seq[SortOrder] = orderBy.map(_.expr.asInstanceOf[SortOrder])
+    val tableExpr = FunctionTableSubqueryArgumentExpression(
+      plan = logicalPlan,
       withSinglePartition = withSinglePartition,
       orderByExpressions = orderByExpressions
     )
