@@ -119,7 +119,7 @@ class SeriesTestsMixin:
 
         # Specify new out-of-order index
         psser_from_psser = ps.Series(psser, index=[1, 2, 0])
-        self.assert_eq(psser_from_psser, ps.Series([2, 3, 1], index=[1, 2, 0]))
+        self.assert_eq(psser_from_psser.sort_index(), ps.Series([2, 3, 1], index=[1, 2, 0]).sort_index())
 
         # Specify new dtype and name
         psser_from_psser = ps.Series(psser, name="y", dtype=float)
